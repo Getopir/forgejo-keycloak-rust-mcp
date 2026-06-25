@@ -11,6 +11,7 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [Install](Install.md)
 - [Configuration](Configuration.md)
 - [MCP Functions](MCP-Functions.md)
+- [Generated API Coverage](Generated-API-Coverage.md)
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Roadmap](Roadmap.md)
@@ -22,4 +23,4 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `0.10.0`.
+Current public release: `0.11.0`.

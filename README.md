@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.10.0` means:
+Version `0.11.0` means:
 
 - `0`: pre-1.0 official release line.
-- `10`: beta series 10.
-- `0`: baseline release for beta series 10.
+- `11`: beta series 11.
+- `0`: baseline release for beta series 11.
 
 The governing rule is:
 
@@ -24,11 +24,12 @@ This project does not copy or translate GPL implementation code from other Forge
 - Current: Phase 2 approval gates use a file-backed approval store with exact payload and principal binding.
 - Current: Phase 2 supports single-use approval-backed pull-request merges with dry-run preview.
 - Current: Phase 2 supports single-use approval-backed release creation with dry-run preview.
-- Not yet: full issue, pull request, release, notification, admin, destructive, or generated Forgejo API coverage.
+- Current: Phase 3 generated Forgejo API classification coverage is pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
+- Not yet: generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, or release asset upload.
 
 ## Current Scope
 
-`0.10.0` is a Phase 2 approval-backed release-publication release:
+`0.11.0` is a Phase 3 generated API classification release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -52,6 +53,11 @@ This project does not copy or translate GPL implementation code from other Forge
 - Executes `create_release` only after a valid approval and Forgejo ACL check.
 - Provides dry-run merge previews that do not mutate Forgejo.
 - Provides dry-run release previews that do not mutate Forgejo.
+- Pins the live Forgejo `15.0.3+gitea-1.22.0` Swagger document under `vendor/forgejo-api`.
+- Classifies all 491 pinned Forgejo API operations by target type, risk, approval requirement, and exposure.
+- Exposes `forgejo_api_coverage` as a bounded metadata-only MCP operation.
+- Adds `forgejo-mcpctl api-coverage` for operator and agent readback.
+- Keeps every non-reviewed generated endpoint disabled until a semantic overlay is reviewed.
 
 High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request merge and release creation are the first approval-backed high-risk execution paths.
 
@@ -123,11 +129,13 @@ curl -sS \
 - [Install Guide](docs/install.md)
 - [Configuration](docs/configuration.md)
 - [MCP Functions](docs/mcp-functions.md)
+- [Generated Forgejo API Coverage](docs/generated/forgejo-api-coverage.md)
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
 - [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.11.0](docs/release-notes/0.11.0.md)
 - [Release Notes 0.10.0](docs/release-notes/0.10.0.md)
 - [Release Notes 0.9.0](docs/release-notes/0.9.0.md)
 - [Release Notes 0.8.0](docs/release-notes/0.8.0.md)
@@ -146,6 +154,8 @@ curl -sS \
 - `crates/policy`: operation registry, risk classes, scope checks, approval requirements.
 - `crates/audit`: structured audit event schema.
 - `crates/forgejo-mcpd`: HTTP daemon, principal mapping, Forgejo client, curated MCP tools, and MCP probe.
+- `vendor/forgejo-api`: pinned Forgejo Swagger document and provenance.
+- `tools/generate_forgejo_api_catalog.py`: reproducible generated API coverage report.
 - `openspec/changes/forgejo-keycloak-rust-mcp`: intended behavior and acceptance criteria.
 - `docs/wiki`: Markdown wiki fallback for public Forgejo/Codeberg hosting.
 

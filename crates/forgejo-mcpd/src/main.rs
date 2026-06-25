@@ -314,6 +314,9 @@ async fn mcp_handler(
             "create_approval" => {
                 return create_approval_response(request_id, state, principal, body, decision);
             }
+            "forgejo_api_coverage" => {
+                return forgejo_api_coverage_response(request_id, state, principal, body, decision);
+            }
             "list_repository_metadata" => {
                 return repository_metadata_response(request_id, state, principal, body, decision)
                     .await;
@@ -830,6 +833,96 @@ async fn repository_metadata_response(
             result: None,
             limit: None,
             next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn forgejo_api_coverage_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let page =
+        match PageRequest::from_cursor(body.cursor.as_deref(), body.limit, state.max_page_limit) {
+            Ok(page) => page,
+            Err(err) => {
+                return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string());
+            }
+        };
+    let catalog = match policy::ForgejoApiCatalog::current() {
+        Ok(catalog) => catalog,
+        Err(err) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                request_id,
+                &err.to_string(),
+            );
+        }
+    };
+    let filtered = catalog.filtered_endpoints(body.state.as_deref(), body.target.as_deref());
+    let start = ((page.page - 1) * page.limit) as usize;
+    let end = start
+        .saturating_add(page.limit as usize)
+        .min(filtered.len());
+    let endpoints = if start < filtered.len() {
+        filtered[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+    let next_cursor = if end < filtered.len() {
+        Some((page.page + 1).to_string())
+    } else {
+        None
+    };
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    audit_decision(
+        request_id,
+        &principal,
+        mapping.as_ref(),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    let filter = body.state.clone();
+    let query = body.target.clone();
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: mapping
+                .as_ref()
+                .map(|mapping| mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.as_ref().and_then(|mapping| mapping.forgejo_user_id),
+            trusted_delegation_headers: mapping
+                .as_ref()
+                .map(|mapping| state.trusted_headers.delegated_headers(mapping))
+                .unwrap_or_default(),
+            operation: body.operation,
+            allowed: true,
+            reason: "generated Forgejo API coverage returned; disabled endpoints are metadata only"
+                .to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: false,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "summary": catalog.summary(),
+                "filter": filter,
+                "query": query,
+                "endpoints": endpoints,
+            })),
+            limit: Some(page.limit),
+            next_cursor,
         }),
     )
         .into_response()

@@ -12,11 +12,11 @@ Project URL: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp`
 | License | Ready | `LICENSE` and `LICENSES/AGPL-3.0-or-later.txt`. |
 | Basic build instructions | Ready | `README.md`, `docs/install.md`. |
 | Test instructions | Ready | `docs/testing.md`. |
-| Security checks | Started | `docs/security-checks.md`, `deny.toml`, `.forgejo/workflows/ci.yml`; local fmt/check/test completed for `0.10.0`. |
+| Security checks | Started | `docs/security-checks.md`, `deny.toml`, `.forgejo/workflows/ci.yml`; local fmt/check/test completed for `0.11.0`. |
 | Security reporting process | Started | `SECURITY.md`. |
 | Contribution process | Started | `CONTRIBUTING.md`. |
 | Roadmap | Ready | `docs/wiki/Roadmap.md`. |
-| Release notes | Ready | `docs/release-notes/0.10.0.md`. |
+| Release notes | Ready | `docs/release-notes/0.11.0.md`. |
 
 ## Gaps To Close
 

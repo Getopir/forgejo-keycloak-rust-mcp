@@ -29,6 +29,7 @@ enum Command {
     PullRequests(ListTargetArgs),
     PullReviews(NumberedListArgs),
     Releases(ListTargetArgs),
+    ApiCoverage(ApiCoverageArgs),
     CreateRelease(CreateReleaseArgs),
     Notifications(NotificationArgs),
     CreateApproval(ApprovalArgs),
@@ -64,6 +65,18 @@ struct NumberedListArgs {
 struct NotificationArgs {
     #[arg(long)]
     state: Option<String>,
+    #[arg(long)]
+    limit: Option<u32>,
+    #[arg(long)]
+    cursor: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct ApiCoverageArgs {
+    #[arg(long)]
+    filter: Option<String>,
+    #[arg(long)]
+    query: Option<String>,
     #[arg(long)]
     limit: Option<u32>,
     #[arg(long)]
@@ -223,6 +236,17 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::ApiCoverage(args) => McpRequest {
+                operation: "forgejo_api_coverage",
+                requested_operation: None,
+                target: args.query,
+                limit: args.limit,
+                cursor: args.cursor,
+                state: args.filter,
+                body: None,
+                approval_id: None,
+                dry_run: false,
+            },
             Command::CreateRelease(args) => McpRequest {
                 operation: "create_release",
                 requested_operation: None,

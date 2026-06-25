@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.10.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, and supports approval-backed pull-request merge and release creation.
+`0.11.0` exposes a Phase 1 hardened, Phase 2 curated, and Phase 3 generated-classification MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
 
 ## HTTP Surface
 
@@ -82,6 +82,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_pull_request_reviews` | `forgejo:pr:read` | Read private | No | Lists bounded review summaries for `owner/repository#number`. |
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
+| `forgejo_api_coverage` | `forgejo:repo:read` | Read private | No | Returns bounded generated Forgejo API endpoint classification metadata from the pinned Swagger document. |
 | `create_approval` | `forgejo:approval:grant` | Write mutating | No | Creates a short-lived approval record for one exact approval-gated operation payload. |
 | `create_release` | `forgejo:release:write` | Write mutating | Yes | Dry-run preview without approval, or approval-backed release creation with single-use approval consumption. |
 | `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Dry-run preview without approval, or approval-backed merge execution with single-use approval consumption. |
@@ -154,9 +155,37 @@ Examples:
 
 `create_issue_comment` is additive and still relies on Forgejo ACLs for the mapped user. `merge_pull_request` is the first high-risk executable write and requires a valid approval record created by a different mapped principal.
 
+## Phase 3 Generated API Coverage
+
+`forgejo_api_coverage` returns metadata from the pinned Forgejo `15.0.3+gitea-1.22.0` Swagger document in `vendor/forgejo-api`.
+
+The response includes:
+
+- `summary`: source version, source SHA-256, total operation count, risk counts, target counts, disabled count, semantic-overlay count, approval-required count, destructive count, and admin count.
+- `endpoints`: a bounded page of classified endpoint metadata.
+- `limit`: effective server-capped page limit.
+- `next_cursor`: next page token when more endpoints match.
+
+Filters:
+
+- `state`: optional filter. Supported values include `semantic_overlay`, `disabled`, `approval_required`, `destructive`, `admin`, `read_private`, `write_additive`, `write_mutating`, `secret`, `site_admin`, and `network_egress`.
+- `target`: optional search query matched against method, path, Forgejo `operationId`, or semantic MCP operation name.
+
+Examples:
+
+```json
+{"operation":"forgejo_api_coverage","state":"semantic_overlay","limit":25}
+```
+
+```json
+{"operation":"forgejo_api_coverage","state":"destructive","target":"repo","limit":25}
+```
+
+Generated coverage is metadata-only by default. Only endpoints with `semantic_overlay` exposure are reachable through named MCP tools. Disabled endpoints are not generic API forwarding targets.
+
 ## Approval Store
 
-`0.10.0` uses persistent single-use approval validation for high-risk gates. Configure it with:
+`0.10.0` and later use persistent single-use approval validation for high-risk gates. Configure it with:
 
 - `FORGEJO_MCPD_APPROVAL_STORE`: path to an append-only JSONL approval file.
 - `FORGEJO_MCPD_APPROVAL_TTL_SECONDS`: approval lifetime in seconds. Defaults to `900`.
@@ -254,6 +283,8 @@ forgejo-mcpctl repository-issues forgejo://repository/rawholding/forgejo-keycloa
 forgejo-mcpctl issue-comment forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
 forgejo-mcpctl pull-requests rawholding/forgejo-keycloak-rust-mcp --state open
 forgejo-mcpctl notifications --state unread --limit 25
+forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
+forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25
 forgejo-mcpctl create-release rawholding/forgejo-keycloak-rust-mcp --tag-name v0.10.0 --name v0.10.0 --dry-run
 forgejo-mcpctl merge-pull-request rawholding/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
 forgejo-mcpctl create-approval merge_pull_request rawholding/forgejo-keycloak-rust-mcp#12 --body '{"method":"squash"}'

@@ -184,3 +184,34 @@ The gateway SHALL expose stable resource URI identifiers for returned Forgejo re
 - **WHEN** `forgejo-mcpctl` invokes a curated MCP operation
 - **THEN** it SHALL read the bearer token from a configured environment variable
 - **AND** SHALL NOT require the raw token as a command-line argument.
+
+### Requirement: Generated Forgejo API Coverage
+
+The gateway SHALL pin the Forgejo OpenAPI document used for generated endpoint
+classification, SHALL record source provenance and SHA-256, and SHALL classify
+every endpoint before any generated coverage is exposed to agents.
+
+#### Scenario: Pinned Swagger provenance
+
+- **WHEN** the generated Forgejo API catalog is built
+- **THEN** it SHALL use the pinned `15.0.3+gitea-1.22.0` Swagger document
+- **AND** SHALL expose the pinned source SHA-256 in generated coverage output.
+
+#### Scenario: Deny-by-default generated endpoint coverage
+
+- **WHEN** an endpoint exists in the pinned Swagger document but has no reviewed semantic overlay
+- **THEN** the gateway SHALL classify it for reporting
+- **AND** SHALL keep it disabled as an executable MCP operation.
+
+#### Scenario: Semantic overlay is explicit
+
+- **WHEN** a generated endpoint is exposed through MCP
+- **THEN** it SHALL map to a named policy registry operation
+- **AND** SHALL use that operation's scope, risk class, approval policy, and audit behavior.
+
+#### Scenario: Bounded coverage readback
+
+- **WHEN** an authenticated caller invokes `forgejo_api_coverage`
+- **THEN** the gateway SHALL return bounded endpoint classification metadata
+- **AND** SHALL support `limit`, `cursor`, filter, and query parameters
+- **AND** SHALL NOT execute arbitrary Forgejo API endpoints.
