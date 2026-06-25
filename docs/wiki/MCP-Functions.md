@@ -40,11 +40,11 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://repository/rawholding/forgejo-keycloak-rust-mcp`
 - `forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1`
 - `forgejo://pull/rawholding/forgejo-keycloak-rust-mcp/1`
-- `forgejo://release/rawholding/forgejo-keycloak-rust-mcp/v0.9.0`
+- `forgejo://release/rawholding/forgejo-keycloak-rust-mcp/v0.10.0`
 - `forgejo://notification/123`
 
-High-risk mutations such as release creation, repository deletion, and admin actions require approval and remain disabled. Version `0.9.0` makes pull-request merge the first approval-backed high-risk operation.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. Version `0.10.0` supports approval-backed pull-request merge and release creation.
 
-`create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `merge_pull_request` also supports dry-run preview with no Forgejo mutation.
+`create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `merge_pull_request` and `create_release` also support dry-run preview with no Forgejo mutation.
 
 The optional `forgejo-mcpctl` binary wraps these operations from a shell while reading the bearer token from an environment variable rather than a command-line argument.

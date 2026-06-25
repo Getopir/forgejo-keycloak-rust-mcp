@@ -29,6 +29,7 @@ enum Command {
     PullRequests(ListTargetArgs),
     PullReviews(NumberedListArgs),
     Releases(ListTargetArgs),
+    CreateRelease(CreateReleaseArgs),
     Notifications(NotificationArgs),
     CreateApproval(ApprovalArgs),
     MergePullRequest(MergePullRequestArgs),
@@ -101,6 +102,29 @@ struct MergePullRequestArgs {
     message: Option<String>,
     #[arg(long)]
     delete_branch_after_merge: bool,
+}
+
+#[derive(Debug, Parser)]
+struct CreateReleaseArgs {
+    target: String,
+    #[arg(long)]
+    tag_name: String,
+    #[arg(long)]
+    approval_id: Option<String>,
+    #[arg(long)]
+    dry_run: bool,
+    #[arg(long)]
+    target_commitish: Option<String>,
+    #[arg(long)]
+    name: Option<String>,
+    #[arg(long)]
+    body: Option<String>,
+    #[arg(long)]
+    draft: bool,
+    #[arg(long)]
+    prerelease: bool,
+    #[arg(long)]
+    hide_archive_links: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -199,6 +223,25 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::CreateRelease(args) => McpRequest {
+                operation: "create_release",
+                requested_operation: None,
+                target: Some(args.target),
+                limit: None,
+                cursor: None,
+                state: None,
+                body: Some(release_body(
+                    args.tag_name,
+                    args.target_commitish,
+                    args.name,
+                    args.body,
+                    args.draft,
+                    args.prerelease,
+                    args.hide_archive_links,
+                )),
+                approval_id: args.approval_id,
+                dry_run: args.dry_run,
+            },
             Command::Notifications(args) => list_request(
                 "list_notifications",
                 None,
@@ -286,6 +329,37 @@ fn merge_body(
     }
     if delete_branch_after_merge {
         value["delete_branch_after_merge"] = serde_json::json!(true);
+    }
+    value.to_string()
+}
+
+fn release_body(
+    tag_name: String,
+    target_commitish: Option<String>,
+    name: Option<String>,
+    body: Option<String>,
+    draft: bool,
+    prerelease: bool,
+    hide_archive_links: bool,
+) -> String {
+    let mut value = serde_json::json!({ "tag_name": tag_name });
+    if let Some(target_commitish) = target_commitish {
+        value["target_commitish"] = serde_json::json!(target_commitish);
+    }
+    if let Some(name) = name {
+        value["name"] = serde_json::json!(name);
+    }
+    if let Some(body) = body {
+        value["body"] = serde_json::json!(body);
+    }
+    if draft {
+        value["draft"] = serde_json::json!(true);
+    }
+    if prerelease {
+        value["prerelease"] = serde_json::json!(true);
+    }
+    if hide_archive_links {
+        value["hide_archive_links"] = serde_json::json!(true);
     }
     value.to_string()
 }

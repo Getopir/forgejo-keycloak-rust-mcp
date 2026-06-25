@@ -244,6 +244,29 @@ pub struct IssueCommentSummary {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CreateReleaseOptions {
+    pub tag_name: String,
+    #[serde(default)]
+    pub target_commitish: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub body: Option<String>,
+    #[serde(default)]
+    pub draft: Option<bool>,
+    #[serde(default)]
+    pub prerelease: Option<bool>,
+    #[serde(default)]
+    pub hide_archive_links: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateReleaseResult {
+    pub resource_uri: String,
+    pub release: ReleaseSummary,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MergePullRequestOptions {
     #[serde(default = "default_merge_method")]
     pub method: String,
@@ -277,6 +300,10 @@ pub enum ForgejoError {
     InvalidCursor,
     #[error("issue comment body is required")]
     MissingCommentBody,
+    #[error("release options body must be JSON when supplied")]
+    InvalidReleaseOptions,
+    #[error("release tag_name is required")]
+    MissingReleaseTag,
     #[error("merge options body must be JSON when supplied")]
     InvalidMergeOptions,
     #[error("unsupported merge method")]
@@ -479,6 +506,44 @@ impl ForgejoClient {
         ))
     }
 
+    pub async fn create_release(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &CreateReleaseOptions,
+    ) -> Result<(CreateReleaseResult, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/releases",
+            self.base_url, target.owner, target.repo
+        );
+        let response = self
+            .http
+            .post(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&options.to_forgejo_payload())
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let release = response
+            .json::<ForgejoRelease>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let release = ReleaseSummary::from_release(release, target);
+        Ok((
+            CreateReleaseResult {
+                resource_uri: release.resource_uri.clone(),
+                release,
+            },
+            status.as_u16(),
+        ))
+    }
+
     pub async fn list_notifications(
         &self,
         token: &str,
@@ -569,6 +634,60 @@ impl ForgejoClient {
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
         Ok((value, status.as_u16()))
+    }
+}
+
+impl CreateReleaseOptions {
+    pub fn from_body(body: Option<&str>) -> Result<Self, ForgejoError> {
+        let Some(body) = body.map(str::trim).filter(|body| !body.is_empty()) else {
+            return Err(ForgejoError::MissingReleaseTag);
+        };
+        let options: Self =
+            serde_json::from_str(body).map_err(|_| ForgejoError::InvalidReleaseOptions)?;
+        options.validate()?;
+        Ok(options)
+    }
+
+    fn validate(&self) -> Result<(), ForgejoError> {
+        if self.tag_name.trim().is_empty() {
+            return Err(ForgejoError::MissingReleaseTag);
+        }
+        Ok(())
+    }
+
+    fn to_forgejo_payload(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "tag_name": self.tag_name.trim(),
+        });
+        if let Some(target_commitish) = self
+            .target_commitish
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["target_commitish"] = serde_json::json!(target_commitish);
+        }
+        if let Some(name) = self
+            .name
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["name"] = serde_json::json!(name);
+        }
+        if let Some(body) = &self.body {
+            value["body"] = serde_json::json!(body);
+        }
+        if let Some(draft) = self.draft {
+            value["draft"] = serde_json::json!(draft);
+        }
+        if let Some(prerelease) = self.prerelease {
+            value["prerelease"] = serde_json::json!(prerelease);
+        }
+        if let Some(hide_archive_links) = self.hide_archive_links {
+            value["hide_archive_links"] = serde_json::json!(hide_archive_links);
+        }
+        value
     }
 }
 
@@ -943,6 +1062,26 @@ mod tests {
             .validate()
             .is_err()
         );
+    }
+
+    #[test]
+    fn parses_create_release_options_from_json_body() {
+        let options = CreateReleaseOptions::from_body(Some(
+            r#"{"tag_name":"v1.2.3","name":"Release 1.2.3","draft":true}"#,
+        ))
+        .unwrap();
+        assert_eq!(options.tag_name, "v1.2.3");
+        assert_eq!(options.name.as_deref(), Some("Release 1.2.3"));
+        assert_eq!(options.draft, Some(true));
+
+        let payload = options.to_forgejo_payload();
+        assert_eq!(payload["tag_name"], "v1.2.3");
+        assert_eq!(payload["name"], "Release 1.2.3");
+        assert_eq!(payload["draft"], true);
+
+        assert!(CreateReleaseOptions::from_body(Some("not json")).is_err());
+        assert!(CreateReleaseOptions::from_body(Some(r#"{"name":"missing tag"}"#)).is_err());
+        assert!(CreateReleaseOptions::from_body(None).is_err());
     }
 
     #[test]

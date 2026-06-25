@@ -10,8 +10,8 @@ use axum::routing::{get, post};
 use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
-    ForgejoClient, ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest,
-    RepositoryMetadata, RepositoryTarget,
+    CreateReleaseOptions, ForgejoClient, ForgejoError, MergePullRequestOptions, NumberedTarget,
+    PageRequest, RepositoryMetadata, RepositoryTarget,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
@@ -287,8 +287,17 @@ async fn mcp_handler(
         .principal_mapper
         .as_ref()
         .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
-    if decision.allowed && body.operation == "merge_pull_request" {
-        return merge_pull_request_response(request_id, state, principal, body, decision).await;
+    if decision.allowed {
+        match body.operation.as_str() {
+            "create_release" => {
+                return create_release_response(request_id, state, principal, body, decision).await;
+            }
+            "merge_pull_request" => {
+                return merge_pull_request_response(request_id, state, principal, body, decision)
+                    .await;
+            }
+            _ => {}
+        }
     }
     if decision.allowed && decision.approval_required {
         return approval_required_response(
@@ -556,6 +565,188 @@ fn merge_pull_request_preview_response(
                     target.repository.owner, target.repository.repo, target.number
                 ),
                 "merge_options": options,
+                "approval_required": true,
+                "approval_store_configured": state.approval_store.is_some(),
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn create_release_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_repository_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let options = match CreateReleaseOptions::from_body(body.body.as_deref()) {
+        Ok(options) => options,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    if body.dry_run {
+        return create_release_preview_response(
+            request_id, state, principal, body, decision, target, options,
+        );
+    }
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let Some(store) = state.approval_store.as_ref() else {
+        audit_decision(
+            request_id,
+            &principal,
+            Some(&access.mapping),
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            request_id,
+            &ApprovalError::NotConfigured.to_string(),
+        );
+    };
+    audit_decision(
+        request_id,
+        &principal,
+        Some(&access.mapping),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    let approval = match store.consume(&body, &principal, &access.mapping) {
+        Ok(approval) => approval,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(StatusCode::FORBIDDEN, request_id, &err.to_string());
+        }
+    };
+    let (release_result, forgejo_status) = match access
+        .forgejo
+        .create_release(&access.token, &target, &options)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return forgejo_error_response(request_id, "Forgejo release creation failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "approval consumed and release created by Forgejo".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "approval": approval,
+                "release": release_result,
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn create_release_preview_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+    target: RepositoryTarget,
+    options: CreateReleaseOptions,
+) -> axum::response::Response {
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    audit_decision(
+        request_id,
+        &principal,
+        mapping.as_ref(),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: mapping
+                .as_ref()
+                .map(|mapping| mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.as_ref().and_then(|mapping| mapping.forgejo_user_id),
+            trusted_delegation_headers: mapping
+                .as_ref()
+                .map(|mapping| state.trusted_headers.delegated_headers(mapping))
+                .unwrap_or_default(),
+            operation: body.operation,
+            allowed: true,
+            reason: "dry-run preview only; no Forgejo mutation executed".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "dry_run": true,
+                "would_execute": false,
+                "operation": "create_release",
+                "resource_uri": format!(
+                    "forgejo://release/{}/{}/{}",
+                    target.owner, target.repo, options.tag_name
+                ),
+                "release_options": options,
                 "approval_required": true,
                 "approval_store_configured": state.approval_store.is_some(),
             })),

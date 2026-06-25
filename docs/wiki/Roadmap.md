@@ -95,7 +95,7 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, `0.8.0` hardens approval gates with file-backed exact-payload approval records, and `0.9.0` adds single-use approval-backed pull-request merge. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, `0.8.0` hardens approval gates with file-backed exact-payload approval records, `0.9.0` adds single-use approval-backed pull-request merge, and `0.10.0` adds single-use approval-backed release creation. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
@@ -107,7 +107,7 @@ The `0.6.0` baseline exposes named tools for common work:
 - `list_pull_request_reviews`
 - `list_releases`
 - `list_notifications`
-- `create_release` as an approval-gated policy entry, not an executable release publisher yet
+- `create_release` as an approval-gated release publisher
 
 Each tool should have a stable schema and a narrow operation class. For example, `issue.comment.create` is easier to authorize and audit than a generic `forgejo.request` tool.
 
@@ -166,7 +166,7 @@ Examples of approval-gated actions:
 - Close a high-priority issue.
 - Change labels, milestones, or assignments in protected repositories.
 
-The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Version `0.8.0` adds persistent approval records, and `0.9.0` adds replay prevention plus the first executable high-risk tool:
+The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Version `0.8.0` adds persistent approval records, `0.9.0` adds replay prevention plus the first executable high-risk tool, and `0.10.0` extends the same execution model to release creation:
 
 - A `create_approval` call records the requested high-risk operation, mapped user, target, state, body hash, and expiry.
 - The approval request records both the Keycloak subject and the mapped Forgejo account.
@@ -174,7 +174,7 @@ The `0.6.0` approval-gate baseline denies high-risk execution when no approval I
 - The executor must be a different mapped principal from the approver.
 - Approved execution consumes the approval before calling Forgejo so it cannot be replayed.
 - Expired, changed, revoked, consumed, missing, or wrong-principal approvals are denied.
-- `merge_pull_request` is executable after approval and Forgejo ACL checks; release, admin, and destructive execution remain disabled.
+- `merge_pull_request` and `create_release` are executable after approval and Forgejo ACL checks; admin and destructive execution remain disabled.
 
 ## Phase 3
 

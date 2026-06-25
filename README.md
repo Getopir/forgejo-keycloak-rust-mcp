@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.9.0` means:
+Version `0.10.0` means:
 
 - `0`: pre-1.0 official release line.
-- `9`: beta series 9.
-- `0`: baseline release for beta series 9.
+- `10`: beta series 10.
+- `0`: baseline release for beta series 10.
 
 The governing rule is:
 
@@ -23,11 +23,12 @@ This project does not copy or translate GPL implementation code from other Forge
 - Current: Phase 2 adds a curated bounded tool surface, typed resource URIs, and CLI wrappers for common agent/operator calls.
 - Current: Phase 2 approval gates use a file-backed approval store with exact payload and principal binding.
 - Current: Phase 2 supports single-use approval-backed pull-request merges with dry-run preview.
+- Current: Phase 2 supports single-use approval-backed release creation with dry-run preview.
 - Not yet: full issue, pull request, release, notification, admin, destructive, or generated Forgejo API coverage.
 
 ## Current Scope
 
-`0.9.0` is a Phase 2 approval-backed merge release:
+`0.10.0` is a Phase 2 approval-backed release-publication release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -48,9 +49,11 @@ This project does not copy or translate GPL implementation code from other Forge
 - Consumes approval records before execution so they cannot be replayed.
 - Requires approver and executor to be different mapped principals.
 - Executes `merge_pull_request` only after a valid approval and Forgejo ACL check.
+- Executes `create_release` only after a valid approval and Forgejo ACL check.
 - Provides dry-run merge previews that do not mutate Forgejo.
+- Provides dry-run release previews that do not mutate Forgejo.
 
-High-risk Forgejo mutations such as release publication, deletion, and admin actions remain disabled. Pull-request merge is the first approval-backed high-risk execution path.
+High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request merge and release creation are the first approval-backed high-risk execution paths.
 
 ## Install
 
@@ -125,6 +128,7 @@ curl -sS \
 - [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.10.0](docs/release-notes/0.10.0.md)
 - [Release Notes 0.9.0](docs/release-notes/0.9.0.md)
 - [Release Notes 0.8.0](docs/release-notes/0.8.0.md)
 - [Release Notes 0.7.0](docs/release-notes/0.7.0.md)

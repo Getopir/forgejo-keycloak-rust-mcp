@@ -152,6 +152,19 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 - **AND** SHALL call Forgejo's pull-request merge endpoint using the mapped executor principal's Forgejo token
 - **AND** SHALL audit before and after execution.
 
+#### Scenario: Release creation dry-run
+
+- **WHEN** `create_release` is called with `dry_run: true`
+- **THEN** the gateway SHALL return the parsed repository target and release options
+- **AND** SHALL NOT call Forgejo's release creation endpoint.
+
+#### Scenario: Approval-backed release creation
+
+- **WHEN** `create_release` is called without `dry_run` and with a valid approval ID
+- **THEN** the gateway SHALL consume the approval
+- **AND** SHALL call Forgejo's release creation endpoint using the mapped executor principal's Forgejo token
+- **AND** SHALL audit before and after execution.
+
 ### Requirement: Resource URI And CLI Wrapper Support
 
 The gateway SHALL expose stable resource URI identifiers for returned Forgejo resources, and the project SHALL provide a CLI wrapper for curated operations.

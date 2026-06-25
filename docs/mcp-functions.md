@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.9.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, and supports approval-backed pull-request merge.
+`0.10.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, and supports approval-backed pull-request merge and release creation.
 
 ## HTTP Surface
 
@@ -83,7 +83,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
 | `create_approval` | `forgejo:approval:grant` | Write mutating | No | Creates a short-lived approval record for one exact approval-gated operation payload. |
-| `create_release` | `forgejo:release:write` | Write mutating | Yes | Approval-gated; no release is created without an approval record. |
+| `create_release` | `forgejo:release:write` | Write mutating | Yes | Dry-run preview without approval, or approval-backed release creation with single-use approval consumption. |
 | `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Dry-run preview without approval, or approval-backed merge execution with single-use approval consumption. |
 | `delete_repository` | `forgejo:org:admin` | Destructive | Yes | Approval-gated and not implemented as an executable tool. |
 
@@ -156,7 +156,7 @@ Examples:
 
 ## Approval Store
 
-`0.9.0` uses persistent single-use approval validation for high-risk gates. Configure it with:
+`0.10.0` uses persistent single-use approval validation for high-risk gates. Configure it with:
 
 - `FORGEJO_MCPD_APPROVAL_STORE`: path to an append-only JSONL approval file.
 - `FORGEJO_MCPD_APPROVAL_TTL_SECONDS`: approval lifetime in seconds. Defaults to `900`.
@@ -198,6 +198,41 @@ Preview a merge without mutating Forgejo:
 
 Merge options are JSON in the `body` field. Supported `method` values are `merge`, `squash`, `rebase`, and `rebase-merge`. Optional fields are `title`, `message`, `delete_branch_after_merge`, `force_merge`, and `head_commit_id`.
 
+Create a release approval record:
+
+```json
+{
+  "operation": "create_approval",
+  "requested_operation": "create_release",
+  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"body\":\"Release notes\"}"
+}
+```
+
+Use the returned `approval_id` with the exact same release payload:
+
+```json
+{
+  "operation": "create_release",
+  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"body\":\"Release notes\"}",
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
+}
+```
+
+Preview release creation without mutating Forgejo:
+
+```json
+{
+  "operation": "create_release",
+  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"draft\":true}",
+  "dry_run": true
+}
+```
+
+Release options are JSON in the `body` field. Required field is `tag_name`. Optional fields are `target_commitish`, `name`, `body`, `draft`, `prerelease`, and `hide_archive_links`.
+
 ## CLI Wrapper
 
 `forgejo-mcpctl` wraps the curated MCP calls for agents and operators. It reads a bearer token from an environment variable and posts to `/mcp`.
@@ -219,6 +254,7 @@ forgejo-mcpctl repository-issues forgejo://repository/rawholding/forgejo-keycloa
 forgejo-mcpctl issue-comment forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
 forgejo-mcpctl pull-requests rawholding/forgejo-keycloak-rust-mcp --state open
 forgejo-mcpctl notifications --state unread --limit 25
+forgejo-mcpctl create-release rawholding/forgejo-keycloak-rust-mcp --tag-name v0.10.0 --name v0.10.0 --dry-run
 forgejo-mcpctl merge-pull-request rawholding/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
 forgejo-mcpctl create-approval merge_pull_request rawholding/forgejo-keycloak-rust-mcp#12 --body '{"method":"squash"}'
 ```
