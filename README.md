@@ -1,5 +1,7 @@
 # forgejo-keycloak-rust-mcp
 
+[![Get it on Codeberg](https://get-it-on.codeberg.org/get-it-on-blue-on-white.svg)](https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp)
+
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
 Version `0.4.2` means:
@@ -13,6 +15,12 @@ The governing rule is:
 > Keycloak authenticates. The Rust gateway authorizes the operation class. Forgejo authorizes access to the actual repository or organization.
 
 This project does not copy or translate GPL implementation code from other Forgejo MCP projects. Existing tools may be used as behavior checklists only.
+
+## Project Status
+
+- Current: Phase 0 identity and policy probe is complete.
+- Next: Phase 1 adds Forgejo principal mapping and the first read-only repository metadata tool.
+- Not yet: full issue, pull request, release, notification, admin, or generated Forgejo API coverage.
 
 ## Current Scope
 
@@ -94,6 +102,7 @@ curl -sS \
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
+- [Promotion Checklist](docs/promotion/README.md)
 - [Release Notes 0.4.2](docs/release-notes/0.4.2.md)
 - [Release Notes 0.4.1](docs/release-notes/0.4.1.md)
 - [Release Notes 0.4.0](docs/release-notes/0.4.0.md)
