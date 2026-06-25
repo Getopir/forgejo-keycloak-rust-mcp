@@ -57,7 +57,7 @@ If the hosted wiki repository uses another default branch, push to that branch a
 - `cargo test --workspace`
 - `git diff --check`
 - Secret scan with token, private-key, and internal-hostname patterns.
-- Confirm `LICENSE`, `LICENSES/MIT.txt`, and `LICENSES/Apache-2.0.txt` are present.
+- Confirm `LICENSE` and `LICENSES/AGPL-3.0-or-later.txt` are present.
 - Confirm `SECURITY.md`, `CONTRIBUTING.md`, and `docs/wiki` are present.
 - Create or update the Codeberg release for the current version.
 

@@ -20,4 +20,4 @@ Do not open public issues for suspected vulnerabilities. Follow [SECURITY.md](SE
 
 ## License
 
-By contributing, you agree that your contribution is provided under the repository license: `MIT OR Apache-2.0`.
+By contributing, you agree that your contribution is provided under the repository license: `AGPL-3.0-or-later`.

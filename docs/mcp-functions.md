@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.4.0` exposes a Phase 0 MCP probe endpoint. It validates authentication and evaluates policy for registered operation names. It does not execute Forgejo mutations yet.
+`0.4.1` exposes a Phase 0 MCP probe endpoint. It validates authentication and evaluates policy for registered operation names. It does not execute Forgejo mutations yet.
 
 ## HTTP Surface
 

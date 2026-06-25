@@ -1,8 +1,8 @@
-# SPDX-License-Identifier: MIT OR Apache-2.0
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
 name = "forgejo-mcpd"
-version = "0.4.0"
+version = "0.4.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

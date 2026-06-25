@@ -1,15 +1,11 @@
-forgejo-keycloak-rust-mcp is licensed under either of:
+forgejo-keycloak-rust-mcp is licensed under:
 
-- Apache License, Version 2.0
-- MIT License
+- GNU Affero General Public License v3.0 or later
 
-at your option.
+The full license text is in:
 
-The full license texts are in:
-
-- LICENSES/Apache-2.0.txt
-- LICENSES/MIT.txt
+- LICENSES/AGPL-3.0-or-later.txt
 
 SPDX license expression:
 
-MIT OR Apache-2.0
+AGPL-3.0-or-later

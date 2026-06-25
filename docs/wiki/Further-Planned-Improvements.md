@@ -5,7 +5,7 @@ This page tracks improvements that should be considered before later beta releas
 ## Open Source Publication
 
 - Add complete REUSE metadata with `SPDX-FileCopyrightText` entries for maintained source files.
-- Decide whether documentation should stay under `MIT OR Apache-2.0` or move to a documentation-specific license such as Creative Commons.
+- Decide whether documentation should remain under `AGPL-3.0-or-later` with the code or move to a documentation-specific copyleft license.
 - Add signed release artifacts and document how users can verify them.
 - Publish a software bill of materials for release builds.
 - Add an OpenSSF Best Practices badge or equivalent public security checklist once the project is hosted publicly.
