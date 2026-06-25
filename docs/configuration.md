@@ -14,6 +14,7 @@
 | `--trusted-user-header` | `FORGEJO_MCPD_TRUSTED_USER_HEADER` | No | Trusted reverse-proxy username header generated from the mapped Forgejo login. Defaults to `X-WEBAUTH-USER`. |
 | `--trusted-email-header` | `FORGEJO_MCPD_TRUSTED_EMAIL_HEADER` | No | Optional trusted reverse-proxy email header generated from the mapping. |
 | `--trusted-full-name-header` | `FORGEJO_MCPD_TRUSTED_FULL_NAME_HEADER` | No | Optional trusted reverse-proxy full-name header generated from the mapping. |
+| `--max-page-limit` | `FORGEJO_MCPD_MAX_PAGE_LIMIT` | No | Maximum item count for list-style Phase 2 responses. Defaults to `50`. |
 
 ## Keycloak Setup
 
@@ -28,8 +29,13 @@ Create a dedicated client or audience for the gateway. The access token presente
 For the current release, useful scopes are:
 
 - `forgejo:repo:read`
+- `forgejo:issue:read`
 - `forgejo:issue:write`
+- `forgejo:pr:read`
 - `forgejo:pr:merge`
+- `forgejo:release:read`
+- `forgejo:release:write`
+- `forgejo:notification:read`
 - `forgejo:org:admin`
 
 ## Principal Mapping
@@ -64,6 +70,13 @@ export FORGEJO_AGENT_READER_TOKEN=...
 
 Unknown or disabled mappings are denied before any Forgejo call.
 
+The gateway validates the mapping file at startup:
+
+- `(issuer, subject)` entries must be unique after issuer normalization.
+- `issuer`, `subject`, and `forgejo_login` must not be empty.
+- `api_token_env` may contain only ASCII letters, digits, and underscore.
+- token values are never read from the mapping file.
+
 ## Reverse Proxy
 
 Terminate TLS at a reverse proxy and forward to `127.0.0.1:7080`.
@@ -76,10 +89,26 @@ X-Forwarded-Proto
 X-Forwarded-For
 ```
 
-Do not trust caller-supplied Forgejo identity headers. Forgejo principal mapping must derive from validated Keycloak identity and the configured principal map.
+Do not trust caller-supplied Forgejo identity headers. Forgejo principal mapping must derive from validated Keycloak identity and the configured principal map. Requests that arrive at `/mcp` with configured trusted identity headers, such as `X-WEBAUTH-USER`, are rejected as spoof attempts.
 
 ## Forgejo Delegation
 
-The read-only repository metadata tool uses the Forgejo API. Forgejo supports `Authorization: token ...` and `Authorization: Bearer ...` API authentication. The gateway uses the mapped principal's token environment variable and does not expose that token in responses or audit records.
+Forgejo-backed tools use the Forgejo API. Forgejo supports `Authorization: token ...` and `Authorization: Bearer ...` API authentication. The gateway uses the mapped principal's token environment variable and does not expose that token in responses or audit records.
 
 Forgejo reverse-proxy authentication can read trusted user, email, and full-name headers. Use it only on a trusted private path where public clients cannot send or spoof those headers. The gateway can derive those header names and values from the mapped principal for deployments that use a reverse proxy in front of Forgejo.
+
+## Pagination
+
+List-style tools accept `limit` and `cursor` request fields. The gateway treats `cursor` as an opaque page token and caps `limit` at `FORGEJO_MCPD_MAX_PAGE_LIMIT`.
+
+Example:
+
+```json
+{
+  "operation": "list_repository_issues",
+  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "state": "open",
+  "limit": 25,
+  "cursor": "2"
+}
+```

@@ -47,10 +47,10 @@ pub struct OperationRegistry {
 }
 
 impl OperationRegistry {
-    pub fn phase0() -> Self {
-        // Phase 0 makes the policy boundary explicit before Forgejo API
-        // execution is enabled: every operation has a required OAuth scope,
-        // risk class, and approval flag that clients can test deterministically.
+    pub fn current() -> Self {
+        // Keep the registry explicit: every exposed operation has a required
+        // OAuth scope, risk class, and approval flag that clients can test
+        // deterministically before any Forgejo request is made.
         let operations = [
             Operation {
                 name: "gateway_probe",
@@ -67,11 +67,53 @@ impl OperationRegistry {
                 description: "Read repository metadata through mapped Forgejo identity.",
             },
             Operation {
+                name: "list_repository_issues",
+                scope: "forgejo:issue:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded issue summaries through mapped Forgejo identity.",
+            },
+            Operation {
                 name: "create_issue_comment",
                 scope: "forgejo:issue:write",
                 risk: RiskClass::WriteAdditive,
                 approval_required: false,
-                description: "Additive issue comment creation.",
+                description: "Add an issue or pull-request conversation comment.",
+            },
+            Operation {
+                name: "list_pull_requests",
+                scope: "forgejo:pr:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded pull-request summaries through mapped Forgejo identity.",
+            },
+            Operation {
+                name: "list_pull_request_reviews",
+                scope: "forgejo:pr:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded pull-request review summaries through mapped Forgejo identity.",
+            },
+            Operation {
+                name: "list_releases",
+                scope: "forgejo:release:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded repository release summaries through mapped Forgejo identity.",
+            },
+            Operation {
+                name: "list_notifications",
+                scope: "forgejo:notification:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded notification summaries for the mapped Forgejo principal.",
+            },
+            Operation {
+                name: "create_release",
+                scope: "forgejo:release:write",
+                risk: RiskClass::WriteMutating,
+                approval_required: true,
+                description: "Create or publish a repository release after exact-payload approval.",
             },
             Operation {
                 name: "merge_pull_request",
@@ -92,6 +134,10 @@ impl OperationRegistry {
         .map(|operation| (operation.name, operation))
         .collect();
         Self { operations }
+    }
+
+    pub fn phase0() -> Self {
+        Self::current()
     }
 
     pub fn operation(&self, name: &str) -> Result<&Operation, PolicyError> {
@@ -140,8 +186,8 @@ mod tests {
     }
 
     #[test]
-    fn every_phase0_operation_has_enforced_scope_and_approval_policy() {
-        let registry = OperationRegistry::phase0();
+    fn every_current_operation_has_enforced_scope_and_approval_policy() {
+        let registry = OperationRegistry::current();
         for operation in registry.operations() {
             let empty_scopes = BTreeSet::new();
             let denied = registry.decide(operation.name, &empty_scopes).unwrap();

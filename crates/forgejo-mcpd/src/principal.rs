@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use audit::PrincipalType;
+use axum::http::HeaderMap;
 use identity::Principal;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -58,6 +59,12 @@ pub struct PrincipalMapper {
 pub enum PrincipalMapError {
     #[error("principal map load failed: {0}")]
     Load(String),
+    #[error("principal map contains duplicate issuer/subject entry")]
+    DuplicateMapping,
+    #[error("principal map entry has an empty required field: {0}")]
+    EmptyField(&'static str),
+    #[error("api_token_env must contain only ASCII letters, digits, and underscore")]
+    InvalidTokenEnv,
     #[error("principal is not mapped to a Forgejo account")]
     NotMapped,
     #[error("principal mapping is disabled")]
@@ -91,19 +98,22 @@ impl PrincipalMapper {
     pub fn from_json_str(text: &str) -> Result<Self, PrincipalMapError> {
         let file: PrincipalMapFile =
             serde_json::from_str(text).map_err(|err| PrincipalMapError::Load(err.to_string()))?;
-        let mappings = file
-            .mappings
-            .into_iter()
-            .map(|mapping| {
-                (
-                    (
-                        mapping.issuer.trim_end_matches('/').to_string(),
-                        mapping.subject.clone(),
-                    ),
-                    mapping,
-                )
-            })
-            .collect();
+        let mut mappings = BTreeMap::new();
+        for mut mapping in file.mappings {
+            validate_required("issuer", &mapping.issuer)?;
+            validate_required("subject", &mapping.subject)?;
+            validate_required("forgejo_login", &mapping.forgejo_login)?;
+            if let Some(token_env) = mapping.api_token_env.as_deref() {
+                validate_token_env(token_env)?;
+            }
+            mapping.issuer = mapping.issuer.trim_end_matches('/').to_string();
+            mapping.subject = mapping.subject.trim().to_string();
+            mapping.forgejo_login = mapping.forgejo_login.trim().to_string();
+            let key = (mapping.issuer.clone(), mapping.subject.clone());
+            if mappings.insert(key, mapping).is_some() {
+                return Err(PrincipalMapError::DuplicateMapping);
+            }
+        }
         Ok(Self { mappings })
     }
 
@@ -121,6 +131,24 @@ impl PrincipalMapper {
         }
         Ok(mapping)
     }
+}
+
+fn validate_required(field: &'static str, value: &str) -> Result<(), PrincipalMapError> {
+    if value.trim().is_empty() {
+        return Err(PrincipalMapError::EmptyField(field));
+    }
+    Ok(())
+}
+
+fn validate_token_env(value: &str) -> Result<(), PrincipalMapError> {
+    if value.is_empty()
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+    {
+        return Err(PrincipalMapError::InvalidTokenEnv);
+    }
+    Ok(())
 }
 
 impl TrustedHeaderConfig {
@@ -156,6 +184,25 @@ impl TrustedHeaderConfig {
             });
         }
         headers
+    }
+
+    pub fn spoofed_header(&self, headers: &HeaderMap) -> Option<String> {
+        self.header_names()
+            .into_iter()
+            .find(|name| headers.contains_key(*name))
+            .map(ToString::to_string)
+    }
+
+    fn header_names(&self) -> BTreeSet<&str> {
+        let mut names = BTreeSet::new();
+        names.insert(self.user_header.as_str());
+        if let Some(header) = &self.email_header {
+            names.insert(header.as_str());
+        }
+        if let Some(header) = &self.full_name_header {
+            names.insert(header.as_str());
+        }
+        names
     }
 }
 
@@ -216,6 +263,36 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_mapping() {
+        let err = PrincipalMapper::from_json_str(
+            r#"{
+              "mappings": [
+                {"issuer": "https://sso.example/realms/agents", "subject": "sub-1", "forgejo_login": "agent-one"},
+                {"issuer": "https://sso.example/realms/agents/", "subject": "sub-1", "forgejo_login": "agent-two"}
+              ]
+            }"#,
+        )
+        .unwrap_err();
+        assert!(matches!(err, PrincipalMapError::DuplicateMapping));
+    }
+
+    #[test]
+    fn rejects_invalid_token_env_name() {
+        let err = PrincipalMapper::from_json_str(
+            r#"{
+              "mappings": [{
+                "issuer": "https://sso.example/realms/agents",
+                "subject": "sub-1",
+                "forgejo_login": "agent-one",
+                "api_token_env": "FORGEJO TOKEN"
+              }]
+            }"#,
+        )
+        .unwrap_err();
+        assert!(matches!(err, PrincipalMapError::InvalidTokenEnv));
+    }
+
+    #[test]
     fn builds_trusted_headers_from_mapping() {
         let config = TrustedHeaderConfig::new(
             "X-WEBAUTH-USER",
@@ -238,5 +315,16 @@ mod tests {
         assert_eq!(headers[0].value, "agent-one");
         assert_eq!(headers[1].name, "X-WEBAUTH-EMAIL");
         assert_eq!(headers[2].name, "X-WEBAUTH-FULLNAME");
+    }
+
+    #[test]
+    fn detects_incoming_trusted_header_spoof() {
+        let config = TrustedHeaderConfig::new("X-WEBAUTH-USER", None, None);
+        let mut headers = HeaderMap::new();
+        headers.insert("X-WEBAUTH-USER", "attacker".parse().unwrap());
+        assert_eq!(
+            config.spoofed_header(&headers),
+            Some("X-WEBAUTH-USER".to_string())
+        );
     }
 }

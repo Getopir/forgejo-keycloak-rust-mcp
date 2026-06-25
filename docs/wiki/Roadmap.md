@@ -9,13 +9,13 @@
 
 ## Phase 1
 
-Phase 1 turns the identity and policy probe into a usable read-only Forgejo gateway. Version `0.5.0` implements the baseline: an agent proves who it is through Keycloak, the gateway maps that identity to a Forgejo account, and the gateway can read bounded repository metadata through Forgejo API.
+Phase 1 turns the identity and policy probe into a usable read-only Forgejo gateway. Version `0.5.0` implemented the baseline: an agent proves who it is through Keycloak, the gateway maps that identity to a Forgejo account, and the gateway can read bounded repository metadata through Forgejo API. Version `0.6.0` hardens that baseline with duplicate-map validation, required-field validation, token environment-name validation, and trusted-header spoof rejection.
 
 ### Principal Mapping From Keycloak Subject To Forgejo Account
 
 The gateway maintains a deterministic mapping between the Keycloak principal in the access token and the Forgejo account that should be used for downstream authorization.
 
-The `0.5.0` mapping inputs are:
+The mapping inputs are:
 
 - Keycloak issuer.
 - Keycloak subject (`sub`).
@@ -34,6 +34,8 @@ Expected behavior:
 - A disabled mapping is rejected even if the token is valid.
 - A mapped subject is recorded in audit output as both the Keycloak principal and the Forgejo principal.
 - Mapping changes are auditable and should be treated as security-sensitive administration.
+- Duplicate mappings are rejected at startup.
+- Token environment names are constrained to ASCII letters, digits, and underscore.
 
 ### Forgejo Trusted-Header Delegation
 
@@ -52,6 +54,7 @@ Security requirements:
 
 - Forgejo must only accept trusted identity headers from the gateway or trusted reverse proxy.
 - Public clients must not be able to send or spoof those headers.
+- The gateway rejects `/mcp` requests that include configured trusted identity headers.
 - Header names and trusted proxy ranges must be documented in deployment configuration.
 - Every delegated request must produce an audit record that includes the Keycloak subject, Forgejo principal, operation name, target, and allow/deny decision.
 
@@ -92,18 +95,19 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
-The gateway should expose named tools for common work:
+The `0.6.0` baseline exposes named tools for common work:
 
-- List, create, and update issues within policy limits.
-- Add issue comments.
-- List pull requests and read pull-request metadata.
-- Add review comments or review summaries.
-- Prepare release notes or create releases when policy allows it.
-- Read notifications relevant to the mapped Forgejo principal.
+- `list_repository_issues`
+- `create_issue_comment`
+- `list_pull_requests`
+- `list_pull_request_reviews`
+- `list_releases`
+- `list_notifications`
+- `create_release` as an approval-gated policy entry, not an executable release publisher yet
 
 Each tool should have a stable schema and a narrow operation class. For example, `issue.comment.create` is easier to authorize and audit than a generic `forgejo.request` tool.
 
@@ -119,19 +123,17 @@ Tool design rules:
 
 Agent responses must be bounded. Large repositories can have many issues, comments, reviews, releases, and notifications. Returning everything in one call is fragile and can leak more data than the agent needs.
 
-Every list-style tool should support:
+Every implemented list-style tool supports:
 
 - `limit`, capped by server configuration.
-- `cursor` or page token for the next response.
-- Stable sort order.
-- Optional filters such as state, labels, author, assignee, branch, or updated-since.
+- `cursor` as the next page token.
+- Optional state filters where the Forgejo endpoint supports them.
 
-The response should include:
+The response includes:
 
 - Returned items.
 - Cursor for the next page when more data exists.
-- Count of returned items.
-- Whether the response was truncated.
+- Effective server-capped limit.
 
 The gateway should enforce maximum output size even when Forgejo returns more data than expected.
 
@@ -152,7 +154,7 @@ Examples of approval-gated actions:
 - Close a high-priority issue.
 - Change labels, milestones, or assignments in protected repositories.
 
-Approval gate behavior:
+The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Later releases should add persistent approval records with this behavior:
 
 - The first call prepares an action plan and returns an approval request.
 - The approval request records the agent, mapped user, target, operation, risk class, and exact payload.

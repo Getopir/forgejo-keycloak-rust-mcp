@@ -34,6 +34,23 @@ The gateway SHALL map `(issuer, subject)` to a Forgejo account and SHALL NOT acc
 - **WHEN** a valid token maps to a disabled principal entry
 - **THEN** the gateway SHALL reject the request before any Forgejo call.
 
+#### Scenario: Duplicate mapping
+
+- **WHEN** the principal map contains duplicate `(issuer, subject)` entries after issuer normalization
+- **THEN** gateway startup SHALL fail
+- **AND** no ambiguous Forgejo identity SHALL be selected.
+
+#### Scenario: Malformed token environment name
+
+- **WHEN** a principal map entry uses an `api_token_env` value outside ASCII letters, digits, and underscore
+- **THEN** gateway startup SHALL fail
+- **AND** no token value SHALL be read from the mapping file.
+
+#### Scenario: Spoofed trusted identity header
+
+- **WHEN** a caller sends a configured trusted Forgejo identity header to `/mcp`
+- **THEN** the gateway SHALL reject the request before Forgejo delegation.
+
 ### Requirement: Operation Policy Registry
 
 Every exposed operation SHALL have a deterministic policy entry containing scope, risk class, approval requirement, and response limits.
@@ -59,8 +76,51 @@ The gateway SHALL provide a read-only repository metadata operation that uses th
 - **THEN** the gateway SHALL call Forgejo using the mapped principal's configured token environment variable
 - **AND** SHALL return bounded repository metadata.
 
-#### Scenario: Mutating operation attempt
+### Requirement: Curated Phase 2 Forgejo Tools
 
-- **WHEN** a caller requests issue, pull request, release, admin, or destructive operations in Phase 1
-- **THEN** the gateway SHALL either return policy-only metadata or deny the operation
-- **AND** SHALL NOT execute a Forgejo mutation.
+The gateway SHALL provide a curated set of named Forgejo tools instead of arbitrary endpoint forwarding.
+
+#### Scenario: Bounded issue list
+
+- **WHEN** `list_repository_issues` is called with a mapped principal and required scope
+- **THEN** the gateway SHALL call Forgejo using that mapped principal's configured token
+- **AND** SHALL return bounded issue summaries
+- **AND** SHALL return a next cursor when another page may exist.
+
+#### Scenario: Bounded pull request list
+
+- **WHEN** `list_pull_requests` is called with a mapped principal and required scope
+- **THEN** the gateway SHALL return bounded pull-request summaries.
+
+#### Scenario: Bounded pull request review list
+
+- **WHEN** `list_pull_request_reviews` is called for `owner/repository#number`
+- **THEN** the gateway SHALL return bounded review summaries for that pull request.
+
+#### Scenario: Bounded release list
+
+- **WHEN** `list_releases` is called with a mapped principal and required scope
+- **THEN** the gateway SHALL return bounded release summaries.
+
+#### Scenario: Bounded notification list
+
+- **WHEN** `list_notifications` is called with a mapped principal and required scope
+- **THEN** the gateway SHALL return bounded notification summaries for that mapped principal.
+
+#### Scenario: Additive issue comment
+
+- **WHEN** `create_issue_comment` is called for `owner/repository#number` with a non-empty body and required scope
+- **THEN** the gateway SHALL create the issue or pull-request conversation comment using the mapped Forgejo principal
+- **AND** SHALL audit the operation.
+
+#### Scenario: Approval-required mutation attempt
+
+- **WHEN** a caller requests an approval-required mutation without an approval ID
+- **THEN** the gateway SHALL return an approval-required response
+- **AND** SHALL NOT execute the Forgejo mutation.
+
+#### Scenario: Unvalidated approval ID
+
+- **WHEN** a caller requests an approval-required mutation with an approval ID before persistent approval validation exists
+- **THEN** the gateway SHALL deny execution
+- **AND** SHALL NOT treat the caller-supplied approval ID as authority.

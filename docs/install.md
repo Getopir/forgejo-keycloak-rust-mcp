@@ -27,15 +27,16 @@ FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
 FORGEJO_MCPD_BIND=127.0.0.1:7080
 ```
 
-For Phase 1 repository metadata, add:
+For Phase 1 and Phase 2 Forgejo-backed tools, add:
 
 ```sh
 FORGEJO_MCPD_FORGEJO_URL=https://forgejo.example.org
 FORGEJO_MCPD_PRINCIPAL_MAP=/etc/forgejo-mcpd/principals.json
+FORGEJO_MCPD_MAX_PAGE_LIMIT=50
 FORGEJO_AGENT_READER_TOKEN=...
 ```
 
-The principal map stores `api_token_env` names, not token values. Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` and `/etc/forgejo-mcpd/principals.json` out of source control if they contain production identities or runtime token names.
+The principal map stores `api_token_env` names, not token values. Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` and `/etc/forgejo-mcpd/principals.json` out of source control if they contain production identities or runtime token names. The `api_token_env` values must use ASCII letters, digits, and underscore only.
 
 ## Systemd Example
 

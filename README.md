@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.5.0` means:
+Version `0.6.0` means:
 
 - `0`: pre-1.0 official release line.
-- `5`: beta series 5.
-- `0`: baseline release for beta series 5.
+- `6`: beta series 6.
+- `0`: baseline release for beta series 6.
 
 The governing rule is:
 
@@ -19,13 +19,13 @@ This project does not copy or translate GPL implementation code from other Forge
 ## Project Status
 
 - Current: Phase 0 identity and policy probe is complete.
-- Current: Phase 1 adds Forgejo principal mapping and the first read-only repository metadata tool when configured.
-- Next: Phase 2 curated issue, pull request, review, release, and notification tools.
-- Not yet: full issue, pull request, release, notification, admin, or generated Forgejo API coverage.
+- Current: Phase 1 principal mapping is hardened with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
+- Current: Phase 2 adds a curated bounded tool surface for issues, issue comments, pull requests, reviews, releases, and notifications.
+- Not yet: full issue, pull request, release, notification, admin, destructive, or generated Forgejo API coverage.
 
 ## Current Scope
 
-`0.5.0` is a Phase 1 gateway release:
+`0.6.0` is a Phase 1 hardening and Phase 2 baseline release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -35,8 +35,12 @@ This project does not copy or translate GPL implementation code from other Forge
 - Maps Keycloak `(issuer, subject)` principals to Forgejo accounts from an explicit local mapping file.
 - Executes read-only repository metadata lookup through Forgejo API using the mapped principal's configured token environment variable.
 - Builds trusted reverse-proxy identity headers from the mapped principal for deployments that use Forgejo reverse-proxy authentication.
+- Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
+- Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
+- Creates additive issue or pull-request comments through the mapped Forgejo principal.
+- Enforces server-capped `limit` and page-token `cursor` handling for list operations.
 
-Mutating Forgejo API execution is intentionally not enabled yet.
+High-risk Forgejo mutations such as merge, release publication, deletion, and admin actions are still approval-gated or disabled.
 
 ## Install
 
@@ -107,6 +111,7 @@ curl -sS \
 - [Testing](docs/testing.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.6.0](docs/release-notes/0.6.0.md)
 - [Release Notes 0.5.0](docs/release-notes/0.5.0.md)
 - [Release Notes 0.4.2](docs/release-notes/0.4.2.md)
 - [Release Notes 0.4.1](docs/release-notes/0.4.1.md)
@@ -119,7 +124,7 @@ curl -sS \
 - `crates/identity`: Keycloak OIDC discovery, JWKS fetch, JWT claim and audience validation.
 - `crates/policy`: operation registry, risk classes, scope checks, approval requirements.
 - `crates/audit`: structured audit event schema.
-- `crates/forgejo-mcpd`: HTTP daemon, principal mapping, Forgejo metadata client, and MCP probe.
+- `crates/forgejo-mcpd`: HTTP daemon, principal mapping, Forgejo client, curated MCP tools, and MCP probe.
 - `openspec/changes/forgejo-keycloak-rust-mcp`: intended behavior and acceptance criteria.
 - `docs/wiki`: Markdown wiki fallback for public Forgejo/Codeberg hosting.
 
