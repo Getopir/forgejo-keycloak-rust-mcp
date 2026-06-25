@@ -1,4 +1,8 @@
-# Roadmap
+# Implemented Features And Remaining Roadmap
+
+Most of the original phase roadmap is now implemented in `1.0.0`. The sections
+below are retained as design history and as a map from planned phases to shipped
+features.
 
 ## Phase 0
 
@@ -178,7 +182,7 @@ The `0.6.0` approval-gate baseline denies high-risk execution when no approval I
 
 ## Phase 3
 
-Phase 3 expands coverage after the gateway has proven identity, read-only tools, curated workflows, bounded output, and approval gates. Version `0.11.0` starts Phase 3 by pinning the live Forgejo `15.0.3+gitea-1.22.0` Swagger document, classifying all 491 operations, generating a coverage report, and exposing that coverage as bounded metadata through `forgejo_api_coverage`.
+Phase 3 expands coverage after the gateway has proven identity, read-only tools, curated workflows, bounded output, and approval gates. Version `1.0.0` includes the first Phase 3 slice by pinning the live Forgejo `15.0.3+gitea-1.22.0` Swagger document, classifying all 491 operations, generating a coverage report, and exposing that coverage as bounded metadata through `forgejo_api_coverage`.
 
 ### Generated Forgejo API Coverage After Endpoint Classification
 
@@ -195,9 +199,9 @@ Each endpoint should be classified by:
 - Whether output limits are required.
 - Whether the endpoint is excluded.
 
-Generated coverage does not mean unrestricted coverage. In `0.11.0`, only the existing reviewed semantic overlay is executable. All other generated endpoints are metadata-only and disabled until they receive a reviewed semantic operation, scope, risk class, output limit, and approval policy.
+Generated coverage does not mean unrestricted coverage. In `1.0.0`, only the existing reviewed semantic overlay is executable. All other generated endpoints are metadata-only and disabled until they receive a reviewed semantic operation, scope, risk class, output limit, and approval policy.
 
-`0.11.0` generated coverage:
+`1.0.0` generated coverage:
 
 - Pinned spec: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`.
 - Spec SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`.

@@ -17,6 +17,7 @@ use identity::JwtValidator;
 use policy::OperationRegistry;
 use principal::{DelegatedHeader, PrincipalMapper, PrincipalMapping, TrustedHeaderConfig};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -102,6 +103,8 @@ struct McpProbeRequest {
     requested_operation: Option<String>,
     #[serde(default)]
     target: Option<String>,
+    #[serde(default)]
+    query: Option<String>,
     #[serde(default)]
     limit: Option<u32>,
     #[serde(default)]
@@ -219,6 +222,8 @@ async fn protected_resource(State(state): State<AppState>) -> Json<ProtectedReso
         .registry
         .operations()
         .map(|operation| operation.scope)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
         .collect::<Vec<_>>();
     Json(ProtectedResourceMetadata {
         resource: state.resource.clone(),
@@ -862,7 +867,8 @@ fn forgejo_api_coverage_response(
             );
         }
     };
-    let filtered = catalog.filtered_endpoints(body.state.as_deref(), body.target.as_deref());
+    let query_ref = body.query.as_deref().or(body.target.as_deref());
+    let filtered = catalog.filtered_endpoints(body.state.as_deref(), query_ref);
     let start = ((page.page - 1) * page.limit) as usize;
     let end = start
         .saturating_add(page.limit as usize)
@@ -891,7 +897,7 @@ fn forgejo_api_coverage_response(
         None,
     );
     let filter = body.state.clone();
-    let query = body.target.clone();
+    let query = body.query.clone().or_else(|| body.target.clone());
     (
         StatusCode::OK,
         Json(McpResponse {

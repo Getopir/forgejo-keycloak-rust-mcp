@@ -148,6 +148,8 @@ struct McpRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     target: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    query: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     cursor: Option<String>,
@@ -208,6 +210,7 @@ impl Command {
                 operation: "create_issue_comment",
                 requested_operation: None,
                 target: Some(args.target),
+                query: None,
                 limit: None,
                 cursor: None,
                 state: None,
@@ -239,7 +242,8 @@ impl Command {
             Command::ApiCoverage(args) => McpRequest {
                 operation: "forgejo_api_coverage",
                 requested_operation: None,
-                target: args.query,
+                target: None,
+                query: args.query,
                 limit: args.limit,
                 cursor: args.cursor,
                 state: args.filter,
@@ -251,6 +255,7 @@ impl Command {
                 operation: "create_release",
                 requested_operation: None,
                 target: Some(args.target),
+                query: None,
                 limit: None,
                 cursor: None,
                 state: None,
@@ -277,6 +282,7 @@ impl Command {
                 operation: "create_approval",
                 requested_operation: Some(args.requested_operation),
                 target: Some(args.target),
+                query: None,
                 limit: None,
                 cursor: None,
                 state: args.state,
@@ -288,6 +294,7 @@ impl Command {
                 operation: "merge_pull_request",
                 requested_operation: None,
                 target: Some(args.target),
+                query: None,
                 limit: None,
                 cursor: None,
                 state: None,
@@ -309,6 +316,7 @@ fn target_request(operation: &'static str, target: String) -> McpRequest {
         operation,
         requested_operation: None,
         target: Some(target),
+        query: None,
         limit: None,
         cursor: None,
         state: None,
@@ -329,6 +337,7 @@ fn list_request(
         operation,
         requested_operation: None,
         target,
+        query: None,
         limit,
         cursor,
         state,

@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.11.0` exposes a Phase 1 hardened, Phase 2 curated, and Phase 3 generated-classification MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
+`1.0.0` exposes a hardened, curated, and generated-classification MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
 
 ## HTTP Surface
 
@@ -35,6 +35,7 @@ Request:
   "operation": "gateway_probe",
   "requested_operation": "merge_pull_request",
   "target": "owner/repository",
+  "query": "repo",
   "limit": 25,
   "cursor": "2",
   "state": "open",
@@ -56,6 +57,7 @@ Response fields:
 - `required_scope`: scope needed for the operation.
 - `approval_required`: whether the operation is high-risk.
 - `target`: caller-supplied target string for audit context.
+- `query`: optional search query for metadata operations such as `forgejo_api_coverage`.
 - `result`: operation-specific bounded output for Phase 2 tools.
 - `limit`: effective server-capped page limit for list operations.
 - `next_cursor`: page token for the next list call, when Forgejo returned a full page.
@@ -169,7 +171,7 @@ The response includes:
 Filters:
 
 - `state`: optional filter. Supported values include `semantic_overlay`, `disabled`, `approval_required`, `destructive`, `admin`, `read_private`, `write_additive`, `write_mutating`, `secret`, `site_admin`, and `network_egress`.
-- `target`: optional search query matched against method, path, Forgejo `operationId`, or semantic MCP operation name.
+- `query`: optional search query matched against method, path, Forgejo `operationId`, or semantic MCP operation name.
 
 Examples:
 
@@ -178,7 +180,7 @@ Examples:
 ```
 
 ```json
-{"operation":"forgejo_api_coverage","state":"destructive","target":"repo","limit":25}
+{"operation":"forgejo_api_coverage","state":"destructive","query":"repo","limit":25}
 ```
 
 Generated coverage is metadata-only by default. Only endpoints with `semantic_overlay` exposure are reachable through named MCP tools. Disabled endpoints are not generic API forwarding targets.

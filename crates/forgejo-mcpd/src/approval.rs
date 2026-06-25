@@ -304,6 +304,7 @@ mod tests {
             operation: operation.to_string(),
             requested_operation: None,
             target: Some("rawholding/example#7".to_string()),
+            query: None,
             limit: None,
             cursor: None,
             state: None,

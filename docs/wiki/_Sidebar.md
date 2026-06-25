@@ -3,6 +3,7 @@
 - [Home](Home.md)
 - [Install](Install.md)
 - [Configuration](Configuration.md)
+- [Features](Features.md)
 - [MCP Functions](MCP-Functions.md)
 - [Generated API Coverage](Generated-API-Coverage.md)
 - [Agent Setup](Agent-Setup.md)

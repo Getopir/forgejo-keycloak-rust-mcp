@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.11.0` means:
+Version `1.0.0` means:
 
-- `0`: pre-1.0 official release line.
-- `11`: beta series 11.
-- `0`: baseline release for beta series 11.
+- `1`: first stable public release line.
+- `0`: minor feature series.
+- `0`: first stable patch release.
 
 The governing rule is:
 
@@ -18,18 +18,17 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Project Status
 
-- Current: Phase 0 identity and policy probe is complete.
-- Current: Phase 1 principal mapping is hardened with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
-- Current: Phase 2 adds a curated bounded tool surface, typed resource URIs, and CLI wrappers for common agent/operator calls.
-- Current: Phase 2 approval gates use a file-backed approval store with exact payload and principal binding.
-- Current: Phase 2 supports single-use approval-backed pull-request merges with dry-run preview.
-- Current: Phase 2 supports single-use approval-backed release creation with dry-run preview.
-- Current: Phase 3 generated Forgejo API classification coverage is pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
-- Not yet: generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, or release asset upload.
+- Shipped: identity and policy probe endpoints for validating agent bearer-token context.
+- Shipped: principal mapping with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
+- Shipped: curated bounded Forgejo tools, typed resource URIs, and CLI wrappers for common agent/operator calls.
+- Shipped: file-backed approval gates with exact payload and principal binding.
+- Shipped: single-use approval-backed pull-request merges and release creation with dry-run preview.
+- Shipped: generated Forgejo API classification coverage pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
+- Remaining: generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
 
 ## Current Scope
 
-`0.11.0` is a Phase 3 generated API classification release:
+`1.0.0` is the first stable release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -128,6 +127,7 @@ curl -sS \
 
 - [Install Guide](docs/install.md)
 - [Configuration](docs/configuration.md)
+- [Features](docs/features.md)
 - [MCP Functions](docs/mcp-functions.md)
 - [Generated Forgejo API Coverage](docs/generated/forgejo-api-coverage.md)
 - [Agent Setup](docs/agent-setup.md)
@@ -135,7 +135,7 @@ curl -sS \
 - [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 0.11.0](docs/release-notes/0.11.0.md)
+- [Release Notes 1.0.0](docs/release-notes/1.0.0.md)
 - [Release Notes 0.10.0](docs/release-notes/0.10.0.md)
 - [Release Notes 0.9.0](docs/release-notes/0.9.0.md)
 - [Release Notes 0.8.0](docs/release-notes/0.8.0.md)
