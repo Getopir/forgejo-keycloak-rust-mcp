@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.7.0` means:
+Version `0.8.0` means:
 
 - `0`: pre-1.0 official release line.
-- `7`: beta series 7.
-- `0`: baseline release for beta series 7.
+- `8`: beta series 8.
+- `0`: baseline release for beta series 8.
 
 The governing rule is:
 
@@ -21,11 +21,12 @@ This project does not copy or translate GPL implementation code from other Forge
 - Current: Phase 0 identity and policy probe is complete.
 - Current: Phase 1 principal mapping is hardened with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
 - Current: Phase 2 adds a curated bounded tool surface, typed resource URIs, and CLI wrappers for common agent/operator calls.
+- Current: Phase 2 approval gates use a file-backed approval store with exact payload and principal binding.
 - Not yet: full issue, pull request, release, notification, admin, destructive, or generated Forgejo API coverage.
 
 ## Current Scope
 
-`0.7.0` is a Phase 2 resource URI and CLI release:
+`0.8.0` is a Phase 2 approval-store hardening release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -41,8 +42,10 @@ This project does not copy or translate GPL implementation code from other Forge
 - Enforces server-capped `limit` and page-token `cursor` handling for list operations.
 - Returns stable `forgejo://...` resource URIs in repository, issue, pull-request, review, release, notification, and comment summaries.
 - Adds `forgejo-mcpctl` as a token-env based CLI wrapper for curated MCP calls.
+- Adds short-lived, file-backed approval records for high-risk operation gates.
+- Rejects forged, expired, mismatched, or wrong-principal approval IDs.
 
-High-risk Forgejo mutations such as merge, release publication, deletion, and admin actions are still approval-gated or disabled.
+High-risk Forgejo mutations such as merge, release publication, deletion, and admin actions are still not executable. They now validate approval records before returning the non-executing gate response.
 
 ## Install
 
@@ -68,6 +71,7 @@ forgejo-mcpd \
   --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
   --audience forgejo-mcp \
   --resource https://mcp.example.org/mcp \
+  --approval-store /var/lib/forgejo-mcpd/approvals.jsonl \
   --bind 127.0.0.1:7080
 ```
 
@@ -79,6 +83,7 @@ export FORGEJO_MCPD_DISCOVERY_URL=https://keycloak.example.org/realms/forgejo-ag
 export FORGEJO_MCPD_AUDIENCE=forgejo-mcp
 export FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
 export FORGEJO_MCPD_BIND=127.0.0.1:7080
+export FORGEJO_MCPD_APPROVAL_STORE=/var/lib/forgejo-mcpd/approvals.jsonl
 forgejo-mcpd
 ```
 
@@ -115,6 +120,7 @@ curl -sS \
 - [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.8.0](docs/release-notes/0.8.0.md)
 - [Release Notes 0.7.0](docs/release-notes/0.7.0.md)
 - [Release Notes 0.6.0](docs/release-notes/0.6.0.md)
 - [Release Notes 0.5.0](docs/release-notes/0.5.0.md)

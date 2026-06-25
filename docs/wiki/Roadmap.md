@@ -95,7 +95,7 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, and `0.7.0` adds resource URIs plus CLI wrappers. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, and `0.8.0` hardens approval gates with file-backed exact-payload approval records. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
@@ -166,13 +166,13 @@ Examples of approval-gated actions:
 - Close a high-priority issue.
 - Change labels, milestones, or assignments in protected repositories.
 
-The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Later releases should add persistent approval records with this behavior:
+The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Version `0.8.0` adds persistent approval records with this behavior:
 
-- The first call prepares an action plan and returns an approval request.
-- The approval request records the agent, mapped user, target, operation, risk class, and exact payload.
-- A separate approval decision authorizes or rejects execution.
-- Execution only happens if the payload still matches the approved request.
-- Expired, changed, or replayed approvals are denied.
+- A `create_approval` call records the requested high-risk operation, mapped user, target, state, body hash, and expiry.
+- The approval request records both the Keycloak subject and the mapped Forgejo account.
+- A later high-risk operation call must supply the approval ID and the same operation payload.
+- Expired, changed, revoked, missing, or wrong-principal approvals are denied.
+- High-risk execution still remains disabled until the executable mutation tools are implemented and tested.
 
 ## Phase 3
 

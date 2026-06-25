@@ -120,11 +120,17 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 - **THEN** the gateway SHALL return an approval-required response
 - **AND** SHALL NOT execute the Forgejo mutation.
 
-#### Scenario: Unvalidated approval ID
+#### Scenario: Exact approval validation
 
-- **WHEN** a caller requests an approval-required mutation with an approval ID before persistent approval validation exists
-- **THEN** the gateway SHALL deny execution
-- **AND** SHALL NOT treat the caller-supplied approval ID as authority.
+- **WHEN** a caller requests an approval-required mutation with an approval ID
+- **THEN** the gateway SHALL validate that the approval record exists, has not expired, is not revoked, matches the operation, target, state, body hash, Keycloak principal, OAuth client, and mapped Forgejo account
+- **AND** SHALL deny mismatched or expired approvals before any Forgejo mutation.
+
+#### Scenario: Approval record creation
+
+- **WHEN** a caller invokes `create_approval` with `forgejo:approval:grant` for an operation that is marked approval-required
+- **THEN** the gateway SHALL create a short-lived approval record bound to that exact requested operation payload
+- **AND** SHALL store the approval outside caller-controlled request data.
 
 ### Requirement: Resource URI And CLI Wrapper Support
 

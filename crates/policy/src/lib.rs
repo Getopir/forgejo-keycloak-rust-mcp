@@ -109,6 +109,13 @@ impl OperationRegistry {
                 description: "List bounded notification summaries for the mapped Forgejo principal.",
             },
             Operation {
+                name: "create_approval",
+                scope: "forgejo:approval:grant",
+                risk: RiskClass::WriteMutating,
+                approval_required: false,
+                description: "Create a short-lived approval record bound to one exact high-risk operation payload.",
+            },
+            Operation {
                 name: "create_release",
                 scope: "forgejo:release:write",
                 risk: RiskClass::WriteMutating,

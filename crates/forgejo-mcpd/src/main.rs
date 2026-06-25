@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use anyhow::Context;
+use approval::{ApprovalError, ApprovalStore};
 use audit::{AuditDecision, AuditEvent, PrincipalType};
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
@@ -22,6 +23,7 @@ use tokio::net::TcpListener;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+mod approval;
 mod forgejo;
 mod principal;
 
@@ -53,6 +55,14 @@ struct Args {
     trusted_full_name_header: Option<String>,
     #[arg(long, env = "FORGEJO_MCPD_MAX_PAGE_LIMIT", default_value_t = 50)]
     max_page_limit: u32,
+    #[arg(long, env = "FORGEJO_MCPD_APPROVAL_STORE")]
+    approval_store: Option<PathBuf>,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_APPROVAL_TTL_SECONDS",
+        default_value_t = ApprovalStore::default_ttl_seconds()
+    )]
+    approval_ttl_seconds: u64,
 }
 
 #[derive(Clone)]
@@ -65,6 +75,7 @@ struct AppState {
     forgejo: Option<ForgejoClient>,
     trusted_headers: TrustedHeaderConfig,
     max_page_limit: u32,
+    approval_store: Option<ApprovalStore>,
 }
 
 #[derive(Debug, Serialize)]
@@ -86,6 +97,8 @@ struct ProtectedResourceMetadata {
 struct McpProbeRequest {
     #[serde(default = "default_operation")]
     operation: String,
+    #[serde(default)]
+    requested_operation: Option<String>,
     #[serde(default)]
     target: Option<String>,
     #[serde(default)]
@@ -168,6 +181,9 @@ async fn main() -> anyhow::Result<()> {
             args.trusted_full_name_header,
         ),
         max_page_limit: args.max_page_limit.max(1),
+        approval_store: args
+            .approval_store
+            .map(|path| ApprovalStore::new(path, args.approval_ttl_seconds)),
     };
     let app = Router::new()
         .route("/health", get(health))
@@ -280,6 +296,9 @@ async fn mcp_handler(
     }
     if decision.allowed {
         match body.operation.as_str() {
+            "create_approval" => {
+                return create_approval_response(request_id, state, principal, body, decision);
+            }
             "list_repository_metadata" => {
                 return repository_metadata_response(request_id, state, principal, body, decision)
                     .await;
@@ -651,6 +670,28 @@ fn approval_required_response(
     decision: policy::PolicyDecision,
     mapping: Option<&PrincipalMapping>,
 ) -> axum::response::Response {
+    let approval_validation =
+        body.approval_id
+            .as_ref()
+            .map(|_| match (state.approval_store.as_ref(), mapping) {
+                (Some(store), Some(mapping)) => store.validate(&body, &principal, mapping),
+                (None, _) => Err(ApprovalError::NotConfigured),
+                (_, None) => Err(ApprovalError::PrincipalMismatch),
+            });
+    let status = match approval_validation.as_ref() {
+        Some(Ok(_)) => StatusCode::ACCEPTED,
+        Some(Err(_)) => StatusCode::FORBIDDEN,
+        None => StatusCode::ACCEPTED,
+    };
+    let reason = match approval_validation.as_ref() {
+        Some(Ok(_)) => "approval validated; operation execution is not implemented yet".to_string(),
+        Some(Err(err)) => err.to_string(),
+        None => "approval is required before this operation can execute".to_string(),
+    };
+    let result = approval_validation
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|validation| serde_json::to_value(validation).unwrap_or_default());
     let event = AuditEvent {
         request_id,
         issuer: principal.issuer.clone(),
@@ -672,7 +713,7 @@ fn approval_required_response(
     };
     info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
     (
-        StatusCode::ACCEPTED,
+        status,
         Json(McpResponse {
             request_id,
             subject: principal.subject,
@@ -685,16 +726,12 @@ fn approval_required_response(
                 .unwrap_or_default(),
             operation: body.operation,
             allowed: false,
-            reason: if body.approval_id.is_some() {
-                "persistent approval validation is not implemented yet".to_string()
-            } else {
-                "approval is required before this operation can execute".to_string()
-            },
+            reason,
             required_scope: decision.required_scope.to_string(),
             approval_required: true,
             target: body.target,
             repository: None,
-            result: None,
+            result,
             limit: None,
             next_cursor: None,
         }),
@@ -702,11 +739,107 @@ fn approval_required_response(
         .into_response()
 }
 
-fn forgejo_access(
+fn create_approval_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let Some(requested_operation) = body.requested_operation.as_deref() else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            request_id,
+            "requested_operation is required for create_approval",
+        );
+    };
+    let operation = match state.registry.operation(requested_operation) {
+        Ok(operation) => operation,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    if !operation.approval_required {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            request_id,
+            "requested_operation does not require approval",
+        );
+    }
+    if body.target.as_deref().unwrap_or_default().trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            request_id,
+            "target is required for create_approval",
+        );
+    }
+    let Some(store) = state.approval_store.as_ref() else {
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            request_id,
+            &ApprovalError::NotConfigured.to_string(),
+        );
+    };
+    let mapping = match principal_mapping(&state, &principal, request_id) {
+        Ok(mapping) => mapping,
+        Err(response) => return response,
+    };
+    let grant = match store.create(requested_operation, &body, &principal, &mapping) {
+        Ok(grant) => grant,
+        Err(err) => {
+            return error_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                request_id,
+                &err.to_string(),
+            );
+        }
+    };
+    let event = AuditEvent {
+        request_id,
+        issuer: principal.issuer.clone(),
+        subject: principal.subject.clone(),
+        oauth_client: principal.oauth_client.clone(),
+        principal_type: PrincipalType::from(mapping.principal_type),
+        forgejo_user_id: mapping.forgejo_user_id,
+        forgejo_login: Some(mapping.forgejo_login.clone()),
+        tool: body.operation.clone(),
+        target: body.target.clone(),
+        risk: decision.risk,
+        decision: AuditDecision::Allow,
+        approval_id: Some(grant.approval_id.to_string()),
+        forgejo_status: None,
+        duration_ms: 0,
+        response_bytes: 0,
+    };
+    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "short-lived approval record created".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: false,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::to_value(grant).unwrap_or_default()),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn principal_mapping(
     state: &AppState,
     principal: &identity::Principal,
     request_id: Uuid,
-) -> Result<ForgejoAccess, axum::response::Response> {
+) -> Result<PrincipalMapping, axum::response::Response> {
     let Some(mapper) = &state.principal_mapper else {
         return Err(error_response(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -714,10 +847,18 @@ fn forgejo_access(
             "principal mapping is not configured",
         ));
     };
-    let mapping = mapper
+    mapper
         .resolve(principal)
-        .map_err(|err| error_response(StatusCode::FORBIDDEN, request_id, &err.to_string()))?
-        .clone();
+        .cloned()
+        .map_err(|err| error_response(StatusCode::FORBIDDEN, request_id, &err.to_string()))
+}
+
+fn forgejo_access(
+    state: &AppState,
+    principal: &identity::Principal,
+    request_id: Uuid,
+) -> Result<ForgejoAccess, axum::response::Response> {
+    let mapping = principal_mapping(state, principal, request_id)?;
     let Some(forgejo) = &state.forgejo else {
         return Err(error_response(
             StatusCode::SERVICE_UNAVAILABLE,

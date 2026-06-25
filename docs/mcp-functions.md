@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.7.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, and returns stable resource URIs.
+`0.8.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, and validates persistent approval records for high-risk gates.
 
 ## HTTP Surface
 
@@ -33,10 +33,12 @@ Request:
 ```json
 {
   "operation": "gateway_probe",
+  "requested_operation": "merge_pull_request",
   "target": "owner/repository",
   "limit": 25,
   "cursor": "2",
-  "state": "open"
+  "state": "open",
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
 }
 ```
 
@@ -47,6 +49,7 @@ Response fields:
 - `oauth_client`: OAuth client ID when present.
 - `preferred_username`: optional Keycloak username.
 - `operation`: requested operation.
+- `requested_operation`: operation to approve when `operation` is `create_approval`.
 - `allowed`: policy decision.
 - `reason`: allow or deny reason.
 - `required_scope`: scope needed for the operation.
@@ -78,6 +81,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_pull_request_reviews` | `forgejo:pr:read` | Read private | No | Lists bounded review summaries for `owner/repository#number`. |
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
+| `create_approval` | `forgejo:approval:grant` | Write mutating | No | Creates a short-lived approval record for one exact approval-gated operation payload. |
 | `create_release` | `forgejo:release:write` | Write mutating | Yes | Approval-gated; no release is created without an approval record. |
 | `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Approval-gated; no merge is executed without an approval record. |
 | `delete_repository` | `forgejo:org:admin` | Destructive | Yes | Approval-gated and not implemented as an executable tool. |
@@ -147,7 +151,38 @@ Examples:
 }
 ```
 
-`create_issue_comment` is the only executable write in `0.7.0`. It is additive and still relies on Forgejo ACLs for the mapped user. High-risk writes return an approval-required response and do not execute. Caller-supplied `approval_id` values are not authority until a persistent approval store and validator are implemented.
+`create_issue_comment` is the only executable write in `0.8.0`. It is additive and still relies on Forgejo ACLs for the mapped user. High-risk writes return an approval-required response and do not execute.
+
+## Approval Store
+
+`0.8.0` adds persistent approval validation for high-risk gates. Configure it with:
+
+- `FORGEJO_MCPD_APPROVAL_STORE`: path to an append-only JSONL approval file.
+- `FORGEJO_MCPD_APPROVAL_TTL_SECONDS`: approval lifetime in seconds. Defaults to `900`.
+
+Create an approval record:
+
+```json
+{
+  "operation": "create_approval",
+  "requested_operation": "merge_pull_request",
+  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "body": "merge_method=squash"
+}
+```
+
+Use the returned `approval_id` with the exact same operation payload:
+
+```json
+{
+  "operation": "merge_pull_request",
+  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "body": "merge_method=squash",
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
+}
+```
+
+The gateway rejects approval IDs when the record is missing, expired, revoked, tied to a different Keycloak subject, tied to a different Forgejo mapping, or bound to a different operation, target, state, or body hash. A validated approval still does not execute the high-risk Forgejo mutation in `0.8.0`; it returns an accepted non-executing gate response.
 
 ## CLI Wrapper
 

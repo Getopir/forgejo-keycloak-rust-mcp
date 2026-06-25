@@ -15,6 +15,8 @@
 | `--trusted-email-header` | `FORGEJO_MCPD_TRUSTED_EMAIL_HEADER` | No | Optional trusted reverse-proxy email header generated from the mapping. |
 | `--trusted-full-name-header` | `FORGEJO_MCPD_TRUSTED_FULL_NAME_HEADER` | No | Optional trusted reverse-proxy full-name header generated from the mapping. |
 | `--max-page-limit` | `FORGEJO_MCPD_MAX_PAGE_LIMIT` | No | Maximum item count for list-style Phase 2 responses. Defaults to `50`. |
+| `--approval-store` | `FORGEJO_MCPD_APPROVAL_STORE` | No | Path to an append-only JSONL file for short-lived approval records. Required to validate approval IDs for high-risk gates. |
+| `--approval-ttl-seconds` | `FORGEJO_MCPD_APPROVAL_TTL_SECONDS` | No | Approval lifetime in seconds. Defaults to `900`. |
 
 ## Keycloak Setup
 
@@ -37,6 +39,7 @@ For the current release, useful scopes are:
 - `forgejo:release:write`
 - `forgejo:notification:read`
 - `forgejo:org:admin`
+- `forgejo:approval:grant`
 
 ## Principal Mapping
 
@@ -112,3 +115,14 @@ Example:
   "cursor": "2"
 }
 ```
+
+## Approval Store
+
+Set `FORGEJO_MCPD_APPROVAL_STORE` on deployments that need approval-gated operations to reject fake approval IDs and validate real ones:
+
+```sh
+export FORGEJO_MCPD_APPROVAL_STORE=/var/lib/forgejo-mcpd/approvals.jsonl
+export FORGEJO_MCPD_APPROVAL_TTL_SECONDS=900
+```
+
+The approval file is append-only JSONL. Store it on a filesystem readable and writable only by the gateway service account. Do not place it inside the public repository, a web root, or a shared workspace.
