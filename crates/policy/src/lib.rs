@@ -133,4 +133,21 @@ mod tests {
         scopes.insert("forgejo:repo:read".to_string());
         assert!(registry.decide("gateway_probe", &scopes).unwrap().allowed);
     }
+
+    #[test]
+    fn every_phase0_operation_has_enforced_scope_and_approval_policy() {
+        let registry = OperationRegistry::phase0();
+        for operation in registry.operations() {
+            let empty_scopes = BTreeSet::new();
+            let denied = registry.decide(operation.name, &empty_scopes).unwrap();
+            assert!(!denied.allowed, "{} should deny missing scope", operation.name);
+            assert_eq!(denied.required_scope, operation.scope);
+
+            let mut granted_scopes = BTreeSet::new();
+            granted_scopes.insert(operation.scope.to_string());
+            let allowed = registry.decide(operation.name, &granted_scopes).unwrap();
+            assert!(allowed.allowed, "{} should allow required scope", operation.name);
+            assert_eq!(allowed.approval_required, operation.approval_required);
+        }
+    }
 }
