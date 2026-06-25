@@ -14,7 +14,7 @@ outcomes:
       - Keycloak protected-resource metadata is served
       - Missing and wrong-audience tokens are rejected
       - Policy registry denies missing scopes
-      - VM166 clone runs the daemon from Forgejo commit 4a531ddf24f81c23502a398c443633010207927c
+      - VM166 clone runs the daemon from Forgejo origin/main
   - code: FKRM-L002
     title: Forgejo delegation and principal mapping
     done:
@@ -38,7 +38,7 @@ outcomes:
     title: Lab VM and Neutrino verification
     done:
       - Existing Keycloak issues human and agent tokens
-      - VM166 runs the gateway from Forgejo commit 4a531ddf24f81c23502a398c443633010207927c
+      - VM166 runs the gateway from Forgejo origin/main
       - VM166 Keycloak token authenticates neutrino1-agent through the gateway
       - Current VM166 proof reaches authenticated gateway denial; granting forgejo:repo:read is still required for allowed Forgejo access
     blockers:
