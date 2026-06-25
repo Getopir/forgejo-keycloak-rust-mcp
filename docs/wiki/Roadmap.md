@@ -95,7 +95,7 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, and `0.7.0` adds resource URIs plus CLI wrappers. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
@@ -110,6 +110,18 @@ The `0.6.0` baseline exposes named tools for common work:
 - `create_release` as an approval-gated policy entry, not an executable release publisher yet
 
 Each tool should have a stable schema and a narrow operation class. For example, `issue.comment.create` is easier to authorize and audit than a generic `forgejo.request` tool.
+
+The `0.7.0` resource URI baseline returns stable identifiers such as:
+
+- `forgejo://repository/{owner}/{repo}`
+- `forgejo://issue/{owner}/{repo}/{number}`
+- `forgejo://pull/{owner}/{repo}/{number}`
+- `forgejo://pull-review/{owner}/{repo}/{pull_number}/{review_id}`
+- `forgejo://release/{owner}/{repo}/{tag}`
+- `forgejo://notification/{id}`
+- `forgejo://issue-comment/{owner}/{repo}/{issue_number}/{comment_id}`
+
+The `forgejo-mcpctl` CLI wraps the curated tools for operator and agent harness usage while reading bearer tokens from environment variables.
 
 Tool design rules:
 

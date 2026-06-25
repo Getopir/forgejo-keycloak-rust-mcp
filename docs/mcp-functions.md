@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.6.0` exposes a Phase 1 hardened and Phase 2 baseline MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, and supports additive issue or pull-request comments.
+`0.7.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, and returns stable resource URIs.
 
 ## HTTP Surface
 
@@ -56,6 +56,16 @@ Response fields:
 - `limit`: effective server-capped page limit for list operations.
 - `next_cursor`: page token for the next list call, when Forgejo returned a full page.
 
+Resource summaries include `resource_uri` values. Current forms are:
+
+- `forgejo://repository/{owner}/{repo}`
+- `forgejo://issue/{owner}/{repo}/{number}`
+- `forgejo://pull/{owner}/{repo}/{number}`
+- `forgejo://pull-review/{owner}/{repo}/{pull_number}/{review_id}`
+- `forgejo://release/{owner}/{repo}/{tag}`
+- `forgejo://notification/{id}`
+- `forgejo://issue-comment/{owner}/{repo}/{issue_number}/{comment_id}`
+
 ## Registered Operations
 
 | Operation | Scope | Risk | Approval | Current behavior |
@@ -87,7 +97,7 @@ Example request:
 ```json
 {
   "operation": "list_repository_metadata",
-  "target": "rawholding/forgejo-keycloak-rust-mcp"
+  "target": "forgejo://repository/rawholding/forgejo-keycloak-rust-mcp"
 }
 ```
 
@@ -118,7 +128,7 @@ Examples:
 ```
 
 ```json
-{"operation":"list_pull_request_reviews","target":"rawholding/forgejo-keycloak-rust-mcp#1","limit":25}
+{"operation":"list_pull_request_reviews","target":"forgejo://pull/rawholding/forgejo-keycloak-rust-mcp/1","limit":25}
 ```
 
 ```json
@@ -137,4 +147,27 @@ Examples:
 }
 ```
 
-`create_issue_comment` is the only executable write in `0.6.0`. It is additive and still relies on Forgejo ACLs for the mapped user. High-risk writes return an approval-required response and do not execute. Caller-supplied `approval_id` values are not authority until a persistent approval store and validator are implemented.
+`create_issue_comment` is the only executable write in `0.7.0`. It is additive and still relies on Forgejo ACLs for the mapped user. High-risk writes return an approval-required response and do not execute. Caller-supplied `approval_id` values are not authority until a persistent approval store and validator are implemented.
+
+## CLI Wrapper
+
+`forgejo-mcpctl` wraps the curated MCP calls for agents and operators. It reads a bearer token from an environment variable and posts to `/mcp`.
+
+Build:
+
+```sh
+cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
+```
+
+Example:
+
+```sh
+export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
+export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
+export ACCESS_JWT="$(get-agent-token)"
+
+forgejo-mcpctl repository-issues forgejo://repository/rawholding/forgejo-keycloak-rust-mcp --state open --limit 25
+forgejo-mcpctl issue-comment forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
+forgejo-mcpctl pull-requests rawholding/forgejo-keycloak-rust-mcp --state open
+forgejo-mcpctl notifications --state unread --limit 25
+```

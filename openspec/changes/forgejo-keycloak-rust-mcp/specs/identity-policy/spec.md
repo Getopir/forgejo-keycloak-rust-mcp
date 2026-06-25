@@ -85,6 +85,7 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 - **WHEN** `list_repository_issues` is called with a mapped principal and required scope
 - **THEN** the gateway SHALL call Forgejo using that mapped principal's configured token
 - **AND** SHALL return bounded issue summaries
+- **AND** each summary SHALL include a stable resource URI
 - **AND** SHALL return a next cursor when another page may exist.
 
 #### Scenario: Bounded pull request list
@@ -124,3 +125,23 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 - **WHEN** a caller requests an approval-required mutation with an approval ID before persistent approval validation exists
 - **THEN** the gateway SHALL deny execution
 - **AND** SHALL NOT treat the caller-supplied approval ID as authority.
+
+### Requirement: Resource URI And CLI Wrapper Support
+
+The gateway SHALL expose stable resource URI identifiers for returned Forgejo resources, and the project SHALL provide a CLI wrapper for curated operations.
+
+#### Scenario: Repository URI target
+
+- **WHEN** a repository target is supplied as `forgejo://repository/{owner}/{repo}`
+- **THEN** the gateway SHALL resolve it as the same repository as `owner/repo`.
+
+#### Scenario: Numbered issue or pull URI target
+
+- **WHEN** a numbered target is supplied as `forgejo://issue/{owner}/{repo}/{number}` or `forgejo://pull/{owner}/{repo}/{number}`
+- **THEN** the gateway SHALL resolve it as the same numbered target as `owner/repo#number`.
+
+#### Scenario: CLI token handling
+
+- **WHEN** `forgejo-mcpctl` invokes a curated MCP operation
+- **THEN** it SHALL read the bearer token from a configured environment variable
+- **AND** SHALL NOT require the raw token as a command-line argument.

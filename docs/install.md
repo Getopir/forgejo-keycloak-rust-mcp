@@ -7,12 +7,14 @@ git clone https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp.git
 cd forgejo-keycloak-rust-mcp
 cargo test --workspace
 cargo build --release -p forgejo-mcpd
+cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
 ```
 
 The release binary is:
 
 ```text
 target/release/forgejo-mcpd
+target/release/forgejo-mcpctl
 ```
 
 ## Runtime Service
@@ -63,3 +65,16 @@ WantedBy=multi-user.target
 ```
 
 Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` out of source control.
+
+## CLI Wrapper
+
+`forgejo-mcpctl` is optional. It reads the gateway URL from `FORGEJO_MCPCTL_GATEWAY` and reads the bearer token from the environment variable named by `FORGEJO_MCPCTL_TOKEN_ENV`.
+
+```sh
+export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
+export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
+export ACCESS_JWT="$(get-agent-token)"
+
+forgejo-mcpctl repository-metadata forgejo://repository/rawholding/forgejo-keycloak-rust-mcp
+forgejo-mcpctl repository-issues rawholding/forgejo-keycloak-rust-mcp --state open --limit 25
+```

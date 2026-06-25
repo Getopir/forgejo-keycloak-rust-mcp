@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.6.0` means:
+Version `0.7.0` means:
 
 - `0`: pre-1.0 official release line.
-- `6`: beta series 6.
-- `0`: baseline release for beta series 6.
+- `7`: beta series 7.
+- `0`: baseline release for beta series 7.
 
 The governing rule is:
 
@@ -20,12 +20,12 @@ This project does not copy or translate GPL implementation code from other Forge
 
 - Current: Phase 0 identity and policy probe is complete.
 - Current: Phase 1 principal mapping is hardened with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
-- Current: Phase 2 adds a curated bounded tool surface for issues, issue comments, pull requests, reviews, releases, and notifications.
+- Current: Phase 2 adds a curated bounded tool surface, typed resource URIs, and CLI wrappers for common agent/operator calls.
 - Not yet: full issue, pull request, release, notification, admin, destructive, or generated Forgejo API coverage.
 
 ## Current Scope
 
-`0.6.0` is a Phase 1 hardening and Phase 2 baseline release:
+`0.7.0` is a Phase 2 resource URI and CLI release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -39,6 +39,8 @@ This project does not copy or translate GPL implementation code from other Forge
 - Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
 - Enforces server-capped `limit` and page-token `cursor` handling for list operations.
+- Returns stable `forgejo://...` resource URIs in repository, issue, pull-request, review, release, notification, and comment summaries.
+- Adds `forgejo-mcpctl` as a token-env based CLI wrapper for curated MCP calls.
 
 High-risk Forgejo mutations such as merge, release publication, deletion, and admin actions are still approval-gated or disabled.
 
@@ -55,6 +57,7 @@ Build and test:
 ```sh
 cargo test --workspace
 cargo build --release -p forgejo-mcpd
+cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
 ```
 
 Run:
@@ -109,8 +112,10 @@ curl -sS \
 - [MCP Functions](docs/mcp-functions.md)
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
+- [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.7.0](docs/release-notes/0.7.0.md)
 - [Release Notes 0.6.0](docs/release-notes/0.6.0.md)
 - [Release Notes 0.5.0](docs/release-notes/0.5.0.md)
 - [Release Notes 0.4.2](docs/release-notes/0.4.2.md)

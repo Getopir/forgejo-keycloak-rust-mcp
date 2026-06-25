@@ -34,4 +34,14 @@ Phase 2 baseline tools:
 
 List operations accept `limit` and `cursor`. The server caps `limit` with `FORGEJO_MCPD_MAX_PAGE_LIMIT` and returns `next_cursor` when another page may exist.
 
+Resource summaries include stable `forgejo://...` resource URIs. Examples:
+
+- `forgejo://repository/rawholding/forgejo-keycloak-rust-mcp`
+- `forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1`
+- `forgejo://pull/rawholding/forgejo-keycloak-rust-mcp/1`
+- `forgejo://release/rawholding/forgejo-keycloak-rust-mcp/v0.7.0`
+- `forgejo://notification/123`
+
 High-risk mutations such as release creation, pull-request merge, repository deletion, and admin actions require approval and are not executed by the baseline approval gate. Caller-supplied approval IDs are not trusted until a persistent approval store and validator are implemented.
+
+The optional `forgejo-mcpctl` binary wraps these operations from a shell while reading the bearer token from an environment variable rather than a command-line argument.

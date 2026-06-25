@@ -77,6 +77,7 @@ pub struct ForgejoPermissions {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RepositoryMetadata {
+    pub resource_uri: String,
     pub full_name: String,
     pub owner: String,
     pub name: String,
@@ -111,6 +112,7 @@ struct ForgejoIssue {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IssueSummary {
+    pub resource_uri: String,
     pub number: u64,
     pub title: String,
     pub state: Option<String>,
@@ -135,6 +137,7 @@ struct ForgejoPullRequest {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PullRequestSummary {
+    pub resource_uri: String,
     pub number: u64,
     pub title: String,
     pub state: Option<String>,
@@ -156,6 +159,7 @@ struct ForgejoPullRequestReview {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PullRequestReviewSummary {
+    pub resource_uri: String,
     pub id: i64,
     pub state: Option<String>,
     pub body: Option<String>,
@@ -176,6 +180,7 @@ struct ForgejoRelease {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ReleaseSummary {
+    pub resource_uri: String,
     pub id: i64,
     pub tag_name: String,
     pub name: Option<String>,
@@ -210,6 +215,7 @@ struct ForgejoNotification {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NotificationSummary {
+    pub resource_uri: String,
     pub id: String,
     pub unread: Option<bool>,
     pub pinned: Option<bool>,
@@ -230,6 +236,7 @@ struct ForgejoIssueComment {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IssueCommentSummary {
+    pub resource_uri: String,
     pub id: i64,
     pub html_url: Option<String>,
     pub created_at: Option<String>,
@@ -289,7 +296,10 @@ impl ForgejoClient {
             .json::<ForgejoRepository>()
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
-        Ok((RepositoryMetadata::from(repository), status.as_u16()))
+        Ok((
+            RepositoryMetadata::from_repository(repository, target),
+            status.as_u16(),
+        ))
     }
 
     pub async fn list_issues(
@@ -312,7 +322,13 @@ impl ForgejoClient {
             .get_json::<Vec<ForgejoIssue>>(token, url, &query)
             .await?;
         Ok((
-            Page::new(items.into_iter().map(IssueSummary::from).collect(), page),
+            Page::new(
+                items
+                    .into_iter()
+                    .map(|issue| IssueSummary::from_issue(issue, target))
+                    .collect(),
+                page,
+            ),
             status,
         ))
     }
@@ -347,7 +363,10 @@ impl ForgejoClient {
             .json::<ForgejoIssueComment>()
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
-        Ok((IssueCommentSummary::from(comment), status.as_u16()))
+        Ok((
+            IssueCommentSummary::from_comment(comment, target),
+            status.as_u16(),
+        ))
     }
 
     pub async fn list_pull_requests(
@@ -370,7 +389,10 @@ impl ForgejoClient {
             .await?;
         Ok((
             Page::new(
-                items.into_iter().map(PullRequestSummary::from).collect(),
+                items
+                    .into_iter()
+                    .map(|pull| PullRequestSummary::from_pull_request(pull, target))
+                    .collect(),
                 page,
             ),
             status,
@@ -395,7 +417,7 @@ impl ForgejoClient {
             Page::new(
                 items
                     .into_iter()
-                    .map(PullRequestReviewSummary::from)
+                    .map(|review| PullRequestReviewSummary::from_review(review, target))
                     .collect(),
                 page,
             ),
@@ -418,7 +440,13 @@ impl ForgejoClient {
             .get_json::<Vec<ForgejoRelease>>(token, url, &query)
             .await?;
         Ok((
-            Page::new(items.into_iter().map(ReleaseSummary::from).collect(), page),
+            Page::new(
+                items
+                    .into_iter()
+                    .map(|release| ReleaseSummary::from_release(release, target))
+                    .collect(),
+                page,
+            ),
             status,
         ))
     }
@@ -475,6 +503,16 @@ impl ForgejoClient {
 
 impl RepositoryTarget {
     pub fn parse(value: &str) -> Result<Self, ForgejoError> {
+        if let Some(target) = value.strip_prefix("forgejo://repository/") {
+            return Self::parse_owner_repo_parts(target);
+        }
+        if let Some(target) = value.strip_prefix("forgejo://repo/") {
+            return Self::parse_owner_repo_parts(target);
+        }
+        Self::parse_owner_repo_parts(value)
+    }
+
+    fn parse_owner_repo_parts(value: &str) -> Result<Self, ForgejoError> {
         let mut parts = value.split('/');
         let owner = parts.next().unwrap_or_default().trim();
         let repo = parts.next().unwrap_or_default().trim();
@@ -486,16 +524,30 @@ impl RepositoryTarget {
             repo: repo.to_string(),
         })
     }
+
+    pub fn resource_uri(&self) -> String {
+        format!("forgejo://repository/{}/{}", self.owner, self.repo)
+    }
 }
 
 impl NumberedTarget {
     pub fn parse(value: &str) -> Result<Self, ForgejoError> {
+        if let Some(target) = value.strip_prefix("forgejo://issue/") {
+            return Self::parse_owner_repo_number_parts(target);
+        }
+        if let Some(target) = value.strip_prefix("forgejo://pull/") {
+            return Self::parse_owner_repo_number_parts(target);
+        }
         if let Some((repo_target, number)) = value.rsplit_once('#') {
             return Ok(Self {
                 repository: RepositoryTarget::parse(repo_target)?,
                 number: parse_positive_number(number)?,
             });
         }
+        Self::parse_owner_repo_number_parts(value)
+    }
+
+    fn parse_owner_repo_number_parts(value: &str) -> Result<Self, ForgejoError> {
         let mut parts = value.split('/');
         let owner = parts.next().unwrap_or_default().trim();
         let repo = parts.next().unwrap_or_default().trim();
@@ -575,9 +627,10 @@ fn parse_positive_page(value: &str) -> Result<u32, ForgejoError> {
     Ok(page)
 }
 
-impl From<ForgejoRepository> for RepositoryMetadata {
-    fn from(value: ForgejoRepository) -> Self {
+impl RepositoryMetadata {
+    fn from_repository(value: ForgejoRepository, target: &RepositoryTarget) -> Self {
         Self {
+            resource_uri: target.resource_uri(),
             full_name: value.full_name,
             owner: value.owner.login,
             name: value.name,
@@ -595,9 +648,13 @@ impl From<ForgejoRepository> for RepositoryMetadata {
     }
 }
 
-impl From<ForgejoIssue> for IssueSummary {
-    fn from(value: ForgejoIssue) -> Self {
+impl IssueSummary {
+    fn from_issue(value: ForgejoIssue, target: &RepositoryTarget) -> Self {
         Self {
+            resource_uri: format!(
+                "forgejo://issue/{}/{}/{}",
+                target.owner, target.repo, value.number
+            ),
             number: value.number,
             title: value.title,
             state: value.state,
@@ -610,9 +667,13 @@ impl From<ForgejoIssue> for IssueSummary {
     }
 }
 
-impl From<ForgejoPullRequest> for PullRequestSummary {
-    fn from(value: ForgejoPullRequest) -> Self {
+impl PullRequestSummary {
+    fn from_pull_request(value: ForgejoPullRequest, target: &RepositoryTarget) -> Self {
         Self {
+            resource_uri: format!(
+                "forgejo://pull/{}/{}/{}",
+                target.owner, target.repo, value.number
+            ),
             number: value.number,
             title: value.title,
             state: value.state,
@@ -625,9 +686,13 @@ impl From<ForgejoPullRequest> for PullRequestSummary {
     }
 }
 
-impl From<ForgejoPullRequestReview> for PullRequestReviewSummary {
-    fn from(value: ForgejoPullRequestReview) -> Self {
+impl PullRequestReviewSummary {
+    fn from_review(value: ForgejoPullRequestReview, target: &NumberedTarget) -> Self {
         Self {
+            resource_uri: format!(
+                "forgejo://pull-review/{}/{}/{}/{}",
+                target.repository.owner, target.repository.repo, target.number, value.id
+            ),
             id: value.id,
             state: value.state,
             body: value.body,
@@ -637,11 +702,16 @@ impl From<ForgejoPullRequestReview> for PullRequestReviewSummary {
     }
 }
 
-impl From<ForgejoRelease> for ReleaseSummary {
-    fn from(value: ForgejoRelease) -> Self {
+impl ReleaseSummary {
+    fn from_release(value: ForgejoRelease, target: &RepositoryTarget) -> Self {
+        let tag_name = value.tag_name;
         Self {
+            resource_uri: format!(
+                "forgejo://release/{}/{}/{}",
+                target.owner, target.repo, tag_name
+            ),
             id: value.id,
-            tag_name: value.tag_name,
+            tag_name,
             name: value.name,
             draft: value.draft,
             prerelease: value.prerelease,
@@ -655,6 +725,7 @@ impl From<ForgejoNotification> for NotificationSummary {
     fn from(value: ForgejoNotification) -> Self {
         let subject = value.subject;
         Self {
+            resource_uri: format!("forgejo://notification/{}", value.id),
             id: value.id,
             unread: value.unread,
             pinned: value.pinned,
@@ -669,9 +740,13 @@ impl From<ForgejoNotification> for NotificationSummary {
     }
 }
 
-impl From<ForgejoIssueComment> for IssueCommentSummary {
-    fn from(value: ForgejoIssueComment) -> Self {
+impl IssueCommentSummary {
+    fn from_comment(value: ForgejoIssueComment, target: &NumberedTarget) -> Self {
         Self {
+            resource_uri: format!(
+                "forgejo://issue-comment/{}/{}/{}/{}",
+                target.repository.owner, target.repository.repo, target.number, value.id
+            ),
             id: value.id,
             html_url: value.html_url,
             created_at: value.created_at,
@@ -689,6 +764,13 @@ mod tests {
         let target = RepositoryTarget::parse("rawholding/forgejo-keycloak-rust-mcp").unwrap();
         assert_eq!(target.owner, "rawholding");
         assert_eq!(target.repo, "forgejo-keycloak-rust-mcp");
+        let target =
+            RepositoryTarget::parse("forgejo://repository/rawholding/forgejo-keycloak-rust-mcp")
+                .unwrap();
+        assert_eq!(
+            target.resource_uri(),
+            "forgejo://repository/rawholding/forgejo-keycloak-rust-mcp"
+        );
         assert!(RepositoryTarget::parse("rawholding").is_err());
         assert!(RepositoryTarget::parse("rawholding/repo/extra").is_err());
     }
@@ -702,6 +784,10 @@ mod tests {
 
         let target = NumberedTarget::parse("rawholding/example/7").unwrap();
         assert_eq!(target.number, 7);
+        let target = NumberedTarget::parse("forgejo://pull/rawholding/example/8").unwrap();
+        assert_eq!(target.repository.owner, "rawholding");
+        assert_eq!(target.repository.repo, "example");
+        assert_eq!(target.number, 8);
         assert!(NumberedTarget::parse("rawholding/example#0").is_err());
         assert!(NumberedTarget::parse("rawholding/example/not-a-number").is_err());
     }
@@ -733,7 +819,12 @@ mod tests {
             "ignored": "not copied"
         }))
         .unwrap();
-        let metadata = RepositoryMetadata::from(repository);
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let metadata = RepositoryMetadata::from_repository(repository, &target);
+        assert_eq!(
+            metadata.resource_uri,
+            "forgejo://repository/rawholding/example"
+        );
         assert_eq!(metadata.full_name, "rawholding/example");
         assert_eq!(metadata.permissions.unwrap().pull, true);
     }
