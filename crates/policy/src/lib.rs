@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -46,6 +48,9 @@ pub struct OperationRegistry {
 
 impl OperationRegistry {
     pub fn phase0() -> Self {
+        // Phase 0 makes the policy boundary explicit before Forgejo API
+        // execution is enabled: every operation has a required OAuth scope,
+        // risk class, and approval flag that clients can test deterministically.
         let operations = [
             Operation {
                 name: "gateway_probe",
@@ -140,13 +145,21 @@ mod tests {
         for operation in registry.operations() {
             let empty_scopes = BTreeSet::new();
             let denied = registry.decide(operation.name, &empty_scopes).unwrap();
-            assert!(!denied.allowed, "{} should deny missing scope", operation.name);
+            assert!(
+                !denied.allowed,
+                "{} should deny missing scope",
+                operation.name
+            );
             assert_eq!(denied.required_scope, operation.scope);
 
             let mut granted_scopes = BTreeSet::new();
             granted_scopes.insert(operation.scope.to_string());
             let allowed = registry.decide(operation.name, &granted_scopes).unwrap();
-            assert!(allowed.allowed, "{} should allow required scope", operation.name);
+            assert!(
+                allowed.allowed,
+                "{} should allow required scope",
+                operation.name
+            );
             assert_eq!(allowed.approval_required, operation.approval_required);
         }
     }

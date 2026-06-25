@@ -93,6 +93,7 @@ curl -sS \
 - [MCP Functions](docs/mcp-functions.md)
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
+- [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Release Notes 0.4.0](docs/release-notes/0.4.0.md)
 - [Lab Deployment](deploy/lab/README.md)
 - [Wiki Fallback](docs/wiki/Home.md)
@@ -109,3 +110,9 @@ curl -sS \
 ## Security
 
 Do not put Keycloak client secrets, Forgejo tokens, private keys, or bearer tokens in configuration files committed to this repository. Use runtime environment variables, secret managers, or deployment-specific files outside source control.
+
+See [SECURITY.md](SECURITY.md) before reporting vulnerabilities or sharing logs.
+
+## License
+
+This project is dual-licensed under `MIT OR Apache-2.0`. See [LICENSE](LICENSE) and the full texts in [LICENSES](LICENSES).

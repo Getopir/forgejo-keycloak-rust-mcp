@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use anyhow::Context;
 use audit::{AuditDecision, AuditEvent, PrincipalType};
 use axum::extract::State;
@@ -44,9 +46,9 @@ struct Health {
 }
 
 #[derive(Debug, Serialize)]
-struct ProtectedResourceMetadata<'a> {
-    resource: &'a str,
-    authorization_servers: Vec<&'a str>,
+struct ProtectedResourceMetadata {
+    resource: String,
+    authorization_servers: Vec<String>,
     bearer_methods_supported: Vec<&'static str>,
     scopes_supported: Vec<&'static str>,
     resource_signing_alg_values_supported: Vec<&'static str>,
@@ -125,17 +127,15 @@ async fn health() -> Json<Health> {
     })
 }
 
-async fn protected_resource(
-    State(state): State<AppState>,
-) -> Json<ProtectedResourceMetadata<'static>> {
+async fn protected_resource(State(state): State<AppState>) -> Json<ProtectedResourceMetadata> {
     let scopes = state
         .registry
         .operations()
         .map(|operation| operation.scope)
         .collect::<Vec<_>>();
     Json(ProtectedResourceMetadata {
-        resource: Box::leak(state.resource.clone().into_boxed_str()),
-        authorization_servers: vec![Box::leak(state.issuer.clone().into_boxed_str())],
+        resource: state.resource.clone(),
+        authorization_servers: vec![state.issuer.clone()],
         bearer_methods_supported: vec!["header"],
         scopes_supported: scopes,
         resource_signing_alg_values_supported: vec!["RS256"],
@@ -184,6 +184,8 @@ async fn mcp_probe(
     } else {
         StatusCode::FORBIDDEN
     };
+    // Audit records intentionally include identity and policy metadata only.
+    // Raw bearer tokens and downstream service credentials must never be logged.
     let event = AuditEvent {
         request_id,
         issuer: principal.issuer.clone(),

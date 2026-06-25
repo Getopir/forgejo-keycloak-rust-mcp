@@ -14,6 +14,11 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Roadmap](Roadmap.md)
+- [Further Planned Improvements](Further-Planned-Improvements.md)
+
+## Source-Controlled Wiki
+
+The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo or Codeberg wiki repositories should be synchronized from these Markdown files.
 
 ## Release
 

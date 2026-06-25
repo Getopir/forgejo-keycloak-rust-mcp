@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use policy::RiskClass;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

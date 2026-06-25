@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use serde::{Deserialize, Serialize};
@@ -132,6 +134,9 @@ impl JwtValidator {
         let key = DecodingKey::from_jwk(jwk).map_err(|e| IdentityError::Jwt(e.to_string()))?;
 
         let mut validation = Validation::new(header.alg);
+        // Keycloak may emit `aud` as either a string or an array depending on
+        // client configuration, so audience matching is performed explicitly
+        // after signature, issuer, expiry, and required-claim validation.
         validation.validate_aud = false;
         validation.set_required_spec_claims(&["exp", "iss", "sub"]);
 
