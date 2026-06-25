@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.8.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, and validates persistent approval records for high-risk gates.
+`0.9.0` exposes a Phase 1 hardened and Phase 2 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, and supports approval-backed pull-request merge.
 
 ## HTTP Surface
 
@@ -38,7 +38,8 @@ Request:
   "limit": 25,
   "cursor": "2",
   "state": "open",
-  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a",
+  "dry_run": true
 }
 ```
 
@@ -83,7 +84,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
 | `create_approval` | `forgejo:approval:grant` | Write mutating | No | Creates a short-lived approval record for one exact approval-gated operation payload. |
 | `create_release` | `forgejo:release:write` | Write mutating | Yes | Approval-gated; no release is created without an approval record. |
-| `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Approval-gated; no merge is executed without an approval record. |
+| `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Dry-run preview without approval, or approval-backed merge execution with single-use approval consumption. |
 | `delete_repository` | `forgejo:org:admin` | Destructive | Yes | Approval-gated and not implemented as an executable tool. |
 
 Unknown operations return `400`. Missing or invalid tokens return `401`. Missing required scope returns `403`.
@@ -151,11 +152,11 @@ Examples:
 }
 ```
 
-`create_issue_comment` is the only executable write in `0.8.0`. It is additive and still relies on Forgejo ACLs for the mapped user. High-risk writes return an approval-required response and do not execute.
+`create_issue_comment` is additive and still relies on Forgejo ACLs for the mapped user. `merge_pull_request` is the first high-risk executable write and requires a valid approval record created by a different mapped principal.
 
 ## Approval Store
 
-`0.8.0` adds persistent approval validation for high-risk gates. Configure it with:
+`0.9.0` uses persistent single-use approval validation for high-risk gates. Configure it with:
 
 - `FORGEJO_MCPD_APPROVAL_STORE`: path to an append-only JSONL approval file.
 - `FORGEJO_MCPD_APPROVAL_TTL_SECONDS`: approval lifetime in seconds. Defaults to `900`.
@@ -167,7 +168,7 @@ Create an approval record:
   "operation": "create_approval",
   "requested_operation": "merge_pull_request",
   "target": "rawholding/forgejo-keycloak-rust-mcp#12",
-  "body": "merge_method=squash"
+  "body": "{\"method\":\"squash\"}"
 }
 ```
 
@@ -177,12 +178,25 @@ Use the returned `approval_id` with the exact same operation payload:
 {
   "operation": "merge_pull_request",
   "target": "rawholding/forgejo-keycloak-rust-mcp#12",
-  "body": "merge_method=squash",
+  "body": "{\"method\":\"squash\"}",
   "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
 }
 ```
 
-The gateway rejects approval IDs when the record is missing, expired, revoked, tied to a different Keycloak subject, tied to a different Forgejo mapping, or bound to a different operation, target, state, or body hash. A validated approval still does not execute the high-risk Forgejo mutation in `0.8.0`; it returns an accepted non-executing gate response.
+The gateway rejects approval IDs when the record is missing, expired, revoked, already consumed, created by the same mapped principal that tries to execute it, or bound to a different operation, target, state, or body hash.
+
+Preview a merge without mutating Forgejo:
+
+```json
+{
+  "operation": "merge_pull_request",
+  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "body": "{\"method\":\"squash\"}",
+  "dry_run": true
+}
+```
+
+Merge options are JSON in the `body` field. Supported `method` values are `merge`, `squash`, `rebase`, and `rebase-merge`. Optional fields are `title`, `message`, `delete_branch_after_merge`, `force_merge`, and `head_commit_id`.
 
 ## CLI Wrapper
 
@@ -205,4 +219,6 @@ forgejo-mcpctl repository-issues forgejo://repository/rawholding/forgejo-keycloa
 forgejo-mcpctl issue-comment forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
 forgejo-mcpctl pull-requests rawholding/forgejo-keycloak-rust-mcp --state open
 forgejo-mcpctl notifications --state unread --limit 25
+forgejo-mcpctl merge-pull-request rawholding/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
+forgejo-mcpctl create-approval merge_pull_request rawholding/forgejo-keycloak-rust-mcp#12 --body '{"method":"squash"}'
 ```

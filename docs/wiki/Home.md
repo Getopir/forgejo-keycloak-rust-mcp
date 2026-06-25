@@ -22,4 +22,4 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `0.8.0`.
+Current public release: `0.9.0`.

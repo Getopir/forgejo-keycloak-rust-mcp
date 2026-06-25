@@ -243,6 +243,30 @@ pub struct IssueCommentSummary {
     pub updated_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MergePullRequestOptions {
+    #[serde(default = "default_merge_method")]
+    pub method: String,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
+    #[serde(default)]
+    pub delete_branch_after_merge: Option<bool>,
+    #[serde(default)]
+    pub force_merge: Option<bool>,
+    #[serde(default)]
+    pub head_commit_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MergePullRequestResult {
+    pub resource_uri: String,
+    pub merged: bool,
+    pub method: String,
+    pub forgejo_response: serde_json::Value,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ForgejoError {
     #[error("repository target must be owner/repository")]
@@ -253,6 +277,10 @@ pub enum ForgejoError {
     InvalidCursor,
     #[error("issue comment body is required")]
     MissingCommentBody,
+    #[error("merge options body must be JSON when supplied")]
+    InvalidMergeOptions,
+    #[error("unsupported merge method")]
+    UnsupportedMergeMethod,
     #[error("mapped principal has no Forgejo API token environment variable")]
     MissingTokenEnv,
     #[error("Forgejo API token environment variable is not set")]
@@ -474,6 +502,49 @@ impl ForgejoClient {
         ))
     }
 
+    pub async fn merge_pull_request(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+        options: &MergePullRequestOptions,
+    ) -> Result<(MergePullRequestResult, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/merge",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let response = self
+            .http
+            .post(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&options.to_forgejo_payload())
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(ForgejoError::Api { status, body });
+        }
+        let forgejo_response = if body.trim().is_empty() {
+            serde_json::json!({})
+        } else {
+            serde_json::from_str(&body).unwrap_or_else(|_| serde_json::json!({ "body": body }))
+        };
+        Ok((
+            MergePullRequestResult {
+                resource_uri: format!(
+                    "forgejo://pull/{}/{}/{}",
+                    target.repository.owner, target.repository.repo, target.number
+                ),
+                merged: true,
+                method: options.method.clone(),
+                forgejo_response,
+            },
+            status.as_u16(),
+        ))
+    }
+
     async fn get_json<T: for<'de> Deserialize<'de>>(
         &self,
         token: &str,
@@ -499,6 +570,61 @@ impl ForgejoClient {
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
         Ok((value, status.as_u16()))
     }
+}
+
+impl Default for MergePullRequestOptions {
+    fn default() -> Self {
+        Self {
+            method: default_merge_method(),
+            title: None,
+            message: None,
+            delete_branch_after_merge: None,
+            force_merge: None,
+            head_commit_id: None,
+        }
+    }
+}
+
+impl MergePullRequestOptions {
+    pub fn from_body(body: Option<&str>) -> Result<Self, ForgejoError> {
+        let Some(body) = body.map(str::trim).filter(|body| !body.is_empty()) else {
+            return Ok(Self::default());
+        };
+        serde_json::from_str(body).map_err(|_| ForgejoError::InvalidMergeOptions)
+    }
+
+    fn validate(&self) -> Result<(), ForgejoError> {
+        match self.method.as_str() {
+            "merge" | "squash" | "rebase" | "rebase-merge" => Ok(()),
+            _ => Err(ForgejoError::UnsupportedMergeMethod),
+        }
+    }
+
+    fn to_forgejo_payload(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "Do": self.method,
+        });
+        if let Some(title) = &self.title {
+            value["MergeTitleField"] = serde_json::json!(title);
+        }
+        if let Some(message) = &self.message {
+            value["MergeMessageField"] = serde_json::json!(message);
+        }
+        if let Some(delete_branch_after_merge) = self.delete_branch_after_merge {
+            value["delete_branch_after_merge"] = serde_json::json!(delete_branch_after_merge);
+        }
+        if let Some(force_merge) = self.force_merge {
+            value["ForceMerge"] = serde_json::json!(force_merge);
+        }
+        if let Some(head_commit_id) = &self.head_commit_id {
+            value["HeadCommitID"] = serde_json::json!(head_commit_id);
+        }
+        value
+    }
+}
+
+fn default_merge_method() -> String {
+    "merge".to_string()
 }
 
 impl RepositoryTarget {
@@ -798,6 +924,25 @@ mod tests {
         assert_eq!(request.page, 3);
         assert_eq!(request.limit, 50);
         assert!(PageRequest::from_cursor(Some("0"), None, 50).is_err());
+    }
+
+    #[test]
+    fn parses_merge_options_from_json_body() {
+        let options = MergePullRequestOptions::from_body(Some(
+            r#"{"method":"squash","delete_branch_after_merge":true}"#,
+        ))
+        .unwrap();
+        assert_eq!(options.method, "squash");
+        assert_eq!(options.delete_branch_after_merge, Some(true));
+        assert!(MergePullRequestOptions::from_body(Some("not json")).is_err());
+        assert!(
+            MergePullRequestOptions {
+                method: "invalid".to_string(),
+                ..MergePullRequestOptions::default()
+            }
+            .validate()
+            .is_err()
+        );
     }
 
     #[test]

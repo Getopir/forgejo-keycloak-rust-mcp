@@ -24,6 +24,7 @@ pub struct ApprovalStore {
 #[serde(rename_all = "snake_case")]
 pub enum ApprovalStatus {
     Approved,
+    Consumed,
     Revoked,
 }
 
@@ -42,6 +43,16 @@ pub struct ApprovalRecord {
     pub created_at_epoch: u64,
     pub expires_at_epoch: u64,
     pub status: ApprovalStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consumed_by_issuer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consumed_by_subject: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consumed_by_oauth_client: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consumed_by_forgejo_login: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consumed_at_epoch: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -70,6 +81,8 @@ pub enum ApprovalError {
     NotFound,
     #[error("approval record has been revoked")]
     Revoked,
+    #[error("approval record has already been consumed")]
+    AlreadyConsumed,
     #[error("approval record has expired")]
     Expired,
     #[error("approval record does not match this operation")]
@@ -82,6 +95,8 @@ pub enum ApprovalError {
     BodyMismatch,
     #[error("approval record does not match this principal")]
     PrincipalMismatch,
+    #[error("approval approver and executor must be different mapped principals")]
+    ApproverExecutorSame,
     #[error("approval store I/O failed: {0}")]
     Io(String),
     #[error("approval record is invalid JSON: {0}")]
@@ -127,6 +142,11 @@ impl ApprovalStore {
             created_at_epoch: now,
             expires_at_epoch: now.saturating_add(self.ttl_seconds),
             status: ApprovalStatus::Approved,
+            consumed_by_issuer: None,
+            consumed_by_subject: None,
+            consumed_by_oauth_client: None,
+            consumed_by_forgejo_login: None,
+            consumed_at_epoch: None,
         };
         self.append(&record)?;
         Ok(ApprovalGrant {
@@ -143,6 +163,39 @@ impl ApprovalStore {
         principal: &Principal,
         mapping: &PrincipalMapping,
     ) -> Result<ApprovalValidation, ApprovalError> {
+        let record = self.validated_record(request, principal, mapping)?;
+        Ok(ApprovalValidation {
+            approval_id: record.approval_id,
+            expires_at_epoch: record.expires_at_epoch,
+        })
+    }
+
+    pub fn consume(
+        &self,
+        request: &McpProbeRequest,
+        principal: &Principal,
+        mapping: &PrincipalMapping,
+    ) -> Result<ApprovalValidation, ApprovalError> {
+        let mut record = self.validated_record(request, principal, mapping)?;
+        record.status = ApprovalStatus::Consumed;
+        record.consumed_by_issuer = Some(principal.issuer.clone());
+        record.consumed_by_subject = Some(principal.subject.clone());
+        record.consumed_by_oauth_client = principal.oauth_client.clone();
+        record.consumed_by_forgejo_login = Some(mapping.forgejo_login.clone());
+        record.consumed_at_epoch = Some(now_epoch());
+        self.append(&record)?;
+        Ok(ApprovalValidation {
+            approval_id: record.approval_id,
+            expires_at_epoch: record.expires_at_epoch,
+        })
+    }
+
+    fn validated_record(
+        &self,
+        request: &McpProbeRequest,
+        principal: &Principal,
+        mapping: &PrincipalMapping,
+    ) -> Result<ApprovalRecord, ApprovalError> {
         let approval_id = request
             .approval_id
             .as_deref()
@@ -153,6 +206,9 @@ impl ApprovalStore {
             .ok_or(ApprovalError::NotFound)?;
         if record.status == ApprovalStatus::Revoked {
             return Err(ApprovalError::Revoked);
+        }
+        if record.status == ApprovalStatus::Consumed {
+            return Err(ApprovalError::AlreadyConsumed);
         }
         if now_epoch() > record.expires_at_epoch {
             return Err(ApprovalError::Expired);
@@ -169,18 +225,12 @@ impl ApprovalStore {
         if record.body_sha256 != request_body_hash(request) {
             return Err(ApprovalError::BodyMismatch);
         }
-        if record.issuer != principal.issuer
-            || record.subject != principal.subject
-            || record.oauth_client != principal.oauth_client
-            || record.forgejo_login != mapping.forgejo_login
-            || record.forgejo_user_id != mapping.forgejo_user_id
+        if (record.issuer == principal.issuer && record.subject == principal.subject)
+            || record.forgejo_login == mapping.forgejo_login
         {
-            return Err(ApprovalError::PrincipalMismatch);
+            return Err(ApprovalError::ApproverExecutorSame);
         }
-        Ok(ApprovalValidation {
-            approval_id,
-            expires_at_epoch: record.expires_at_epoch,
-        })
+        Ok(record)
     }
 
     fn append(&self, record: &ApprovalRecord) -> Result<(), ApprovalError> {
@@ -259,6 +309,7 @@ mod tests {
             state: None,
             body: Some("ship it".to_string()),
             approval_id: None,
+            dry_run: false,
         }
     }
 
@@ -290,18 +341,24 @@ mod tests {
     fn approval_is_bound_to_exact_body() {
         let dir = std::env::temp_dir().join(format!("approval-{}.jsonl", Uuid::now_v7()));
         let store = ApprovalStore::new(dir, 60);
-        let principal = principal("subject-1");
-        let mapping = mapping("agent-user");
+        let approver = principal("approver-subject");
+        let approver_mapping = mapping("approver-user");
+        let executor = principal("executor-subject");
+        let executor_mapping = mapping("executor-user");
         let mut request = request("merge_pull_request");
         let grant = store
-            .create("merge_pull_request", &request, &principal, &mapping)
+            .create("merge_pull_request", &request, &approver, &approver_mapping)
             .unwrap();
         request.approval_id = Some(grant.approval_id.to_string());
-        assert!(store.validate(&request, &principal, &mapping).is_ok());
+        assert!(
+            store
+                .validate(&request, &executor, &executor_mapping)
+                .is_ok()
+        );
 
         request.body = Some("different".to_string());
         assert!(matches!(
-            store.validate(&request, &principal, &mapping),
+            store.validate(&request, &executor, &executor_mapping),
             Err(ApprovalError::BodyMismatch)
         ));
     }
@@ -321,8 +378,33 @@ mod tests {
             .unwrap();
         request.approval_id = Some(grant.approval_id.to_string());
         assert!(matches!(
-            store.validate(&request, &principal("subject-2"), &mapping("agent-user")),
-            Err(ApprovalError::PrincipalMismatch)
+            store.validate(&request, &principal("subject-1"), &mapping("agent-user")),
+            Err(ApprovalError::ApproverExecutorSame)
+        ));
+    }
+
+    #[test]
+    fn consumed_approval_cannot_be_replayed() {
+        let dir = std::env::temp_dir().join(format!("approval-{}.jsonl", Uuid::now_v7()));
+        let store = ApprovalStore::new(dir, 60);
+        let mut request = request("merge_pull_request");
+        let grant = store
+            .create(
+                "merge_pull_request",
+                &request,
+                &principal("approver"),
+                &mapping("approver-user"),
+            )
+            .unwrap();
+        request.approval_id = Some(grant.approval_id.to_string());
+        assert!(
+            store
+                .consume(&request, &principal("executor"), &mapping("executor-user"))
+                .is_ok()
+        );
+        assert!(matches!(
+            store.validate(&request, &principal("executor"), &mapping("executor-user")),
+            Err(ApprovalError::AlreadyConsumed)
         ));
     }
 }

@@ -30,6 +30,8 @@ enum Command {
     PullReviews(NumberedListArgs),
     Releases(ListTargetArgs),
     Notifications(NotificationArgs),
+    CreateApproval(ApprovalArgs),
+    MergePullRequest(MergePullRequestArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -74,9 +76,38 @@ struct CommentArgs {
     body: String,
 }
 
+#[derive(Debug, Parser)]
+struct ApprovalArgs {
+    requested_operation: String,
+    target: String,
+    #[arg(long)]
+    body: Option<String>,
+    #[arg(long)]
+    state: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct MergePullRequestArgs {
+    target: String,
+    #[arg(long)]
+    approval_id: Option<String>,
+    #[arg(long)]
+    dry_run: bool,
+    #[arg(long, default_value = "merge")]
+    method: String,
+    #[arg(long)]
+    title: Option<String>,
+    #[arg(long)]
+    message: Option<String>,
+    #[arg(long)]
+    delete_branch_after_merge: bool,
+}
+
 #[derive(Debug, Serialize)]
 struct McpRequest {
     operation: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    requested_operation: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     target: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,6 +118,10 @@ struct McpRequest {
     state: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    approval_id: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
+    dry_run: bool,
 }
 
 #[tokio::main]
@@ -134,11 +169,14 @@ impl Command {
             ),
             Command::IssueComment(args) => McpRequest {
                 operation: "create_issue_comment",
+                requested_operation: None,
                 target: Some(args.target),
                 limit: None,
                 cursor: None,
                 state: None,
                 body: Some(args.body),
+                approval_id: None,
+                dry_run: false,
             },
             Command::PullRequests(args) => list_request(
                 "list_pull_requests",
@@ -168,6 +206,33 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::CreateApproval(args) => McpRequest {
+                operation: "create_approval",
+                requested_operation: Some(args.requested_operation),
+                target: Some(args.target),
+                limit: None,
+                cursor: None,
+                state: args.state,
+                body: args.body,
+                approval_id: None,
+                dry_run: false,
+            },
+            Command::MergePullRequest(args) => McpRequest {
+                operation: "merge_pull_request",
+                requested_operation: None,
+                target: Some(args.target),
+                limit: None,
+                cursor: None,
+                state: None,
+                body: Some(merge_body(
+                    args.method,
+                    args.title,
+                    args.message,
+                    args.delete_branch_after_merge,
+                )),
+                approval_id: args.approval_id,
+                dry_run: args.dry_run,
+            },
         }
     }
 }
@@ -175,11 +240,14 @@ impl Command {
 fn target_request(operation: &'static str, target: String) -> McpRequest {
     McpRequest {
         operation,
+        requested_operation: None,
         target: Some(target),
         limit: None,
         cursor: None,
         state: None,
         body: None,
+        approval_id: None,
+        dry_run: false,
     }
 }
 
@@ -192,10 +260,36 @@ fn list_request(
 ) -> McpRequest {
     McpRequest {
         operation,
+        requested_operation: None,
         target,
         limit,
         cursor,
         state,
         body: None,
+        approval_id: None,
+        dry_run: false,
     }
+}
+
+fn merge_body(
+    method: String,
+    title: Option<String>,
+    message: Option<String>,
+    delete_branch_after_merge: bool,
+) -> String {
+    let mut value = serde_json::json!({ "method": method });
+    if let Some(title) = title {
+        value["title"] = serde_json::json!(title);
+    }
+    if let Some(message) = message {
+        value["message"] = serde_json::json!(message);
+    }
+    if delete_branch_after_merge {
+        value["delete_branch_after_merge"] = serde_json::json!(true);
+    }
+    value.to_string()
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }

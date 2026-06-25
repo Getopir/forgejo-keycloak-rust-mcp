@@ -123,7 +123,8 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 #### Scenario: Exact approval validation
 
 - **WHEN** a caller requests an approval-required mutation with an approval ID
-- **THEN** the gateway SHALL validate that the approval record exists, has not expired, is not revoked, matches the operation, target, state, body hash, Keycloak principal, OAuth client, and mapped Forgejo account
+- **THEN** the gateway SHALL validate that the approval record exists, has not expired, has not been consumed, is not revoked, matches the operation, target, state, and body hash
+- **AND** SHALL require the executing mapped principal to differ from the approving mapped principal
 - **AND** SHALL deny mismatched or expired approvals before any Forgejo mutation.
 
 #### Scenario: Approval record creation
@@ -131,6 +132,25 @@ The gateway SHALL provide a curated set of named Forgejo tools instead of arbitr
 - **WHEN** a caller invokes `create_approval` with `forgejo:approval:grant` for an operation that is marked approval-required
 - **THEN** the gateway SHALL create a short-lived approval record bound to that exact requested operation payload
 - **AND** SHALL store the approval outside caller-controlled request data.
+
+#### Scenario: Approval consumption prevents replay
+
+- **WHEN** an approval-backed operation begins execution
+- **THEN** the gateway SHALL append a consumed approval record before calling Forgejo
+- **AND** SHALL deny later requests that reuse the same approval ID.
+
+#### Scenario: Pull-request merge dry-run
+
+- **WHEN** `merge_pull_request` is called with `dry_run: true`
+- **THEN** the gateway SHALL return the parsed merge target and options
+- **AND** SHALL NOT call Forgejo's merge endpoint.
+
+#### Scenario: Approval-backed pull-request merge
+
+- **WHEN** `merge_pull_request` is called without `dry_run` and with a valid approval ID
+- **THEN** the gateway SHALL consume the approval
+- **AND** SHALL call Forgejo's pull-request merge endpoint using the mapped executor principal's Forgejo token
+- **AND** SHALL audit before and after execution.
 
 ### Requirement: Resource URI And CLI Wrapper Support
 

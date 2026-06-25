@@ -4,9 +4,9 @@ This folder contains public promotion and project-readiness material for `forgej
 
 ## Codeberg Release
 
-Create a Codeberg release for `v0.8.0` using the text in [codeberg-release-v0.8.0.md](codeberg-release-v0.8.0.md).
+Create a Codeberg release for `v0.9.0` using the text in [codeberg-release-v0.9.0.md](codeberg-release-v0.9.0.md).
 
-Codeberg releases are separate from Git tags. The `v0.8.0` tag should be pushed first, then the hosted release object must be created through the Codeberg frontend or API.
+Codeberg releases are separate from Git tags. The `v0.9.0` tag should be pushed first, then the hosted release object must be created through the Codeberg frontend or API.
 
 ## Codeberg Issues
 

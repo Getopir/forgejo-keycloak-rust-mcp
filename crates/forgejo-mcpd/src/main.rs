@@ -10,7 +10,8 @@ use axum::routing::{get, post};
 use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
-    ForgejoClient, ForgejoError, NumberedTarget, PageRequest, RepositoryMetadata, RepositoryTarget,
+    ForgejoClient, ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest,
+    RepositoryMetadata, RepositoryTarget,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
@@ -111,6 +112,8 @@ struct McpProbeRequest {
     body: Option<String>,
     #[serde(default)]
     approval_id: Option<String>,
+    #[serde(default)]
+    dry_run: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -284,6 +287,9 @@ async fn mcp_handler(
         .principal_mapper
         .as_ref()
         .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    if decision.allowed && body.operation == "merge_pull_request" {
+        return merge_pull_request_response(request_id, state, principal, body, decision).await;
+    }
     if decision.allowed && decision.approval_required {
         return approval_required_response(
             request_id,
@@ -371,6 +377,188 @@ async fn mcp_handler(
             target: body.target,
             repository: None,
             result: None,
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn merge_pull_request_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_numbered_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let options = match MergePullRequestOptions::from_body(body.body.as_deref()) {
+        Ok(options) => options,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    if body.dry_run {
+        return merge_pull_request_preview_response(
+            request_id, state, principal, body, decision, target, options,
+        );
+    }
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let Some(store) = state.approval_store.as_ref() else {
+        audit_decision(
+            request_id,
+            &principal,
+            Some(&access.mapping),
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            request_id,
+            &ApprovalError::NotConfigured.to_string(),
+        );
+    };
+    audit_decision(
+        request_id,
+        &principal,
+        Some(&access.mapping),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    let approval = match store.consume(&body, &principal, &access.mapping) {
+        Ok(approval) => approval,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(StatusCode::FORBIDDEN, request_id, &err.to_string());
+        }
+    };
+    let (merge_result, forgejo_status) = match access
+        .forgejo
+        .merge_pull_request(&access.token, &target, &options)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return forgejo_error_response(request_id, "Forgejo pull-request merge failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "approval consumed and pull request merged by Forgejo".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "approval": approval,
+                "merge": merge_result,
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn merge_pull_request_preview_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+    target: NumberedTarget,
+    options: MergePullRequestOptions,
+) -> axum::response::Response {
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    audit_decision(
+        request_id,
+        &principal,
+        mapping.as_ref(),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: mapping
+                .as_ref()
+                .map(|mapping| mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.as_ref().and_then(|mapping| mapping.forgejo_user_id),
+            trusted_delegation_headers: mapping
+                .as_ref()
+                .map(|mapping| state.trusted_headers.delegated_headers(mapping))
+                .unwrap_or_default(),
+            operation: body.operation,
+            allowed: true,
+            reason: "dry-run preview only; no Forgejo mutation executed".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "dry_run": true,
+                "would_execute": false,
+                "operation": "merge_pull_request",
+                "resource_uri": format!(
+                    "forgejo://pull/{}/{}/{}",
+                    target.repository.owner, target.repository.repo, target.number
+                ),
+                "merge_options": options,
+                "approval_required": true,
+                "approval_store_configured": state.approval_store.is_some(),
+            })),
             limit: None,
             next_cursor: None,
         }),
@@ -956,6 +1144,37 @@ fn audit_success(
         decision: AuditDecision::Allow,
         approval_id: body.approval_id.clone(),
         forgejo_status: Some(forgejo_status),
+        duration_ms: 0,
+        response_bytes: 0,
+    };
+    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+}
+
+fn audit_decision(
+    request_id: Uuid,
+    principal: &identity::Principal,
+    mapping: Option<&PrincipalMapping>,
+    body: &McpProbeRequest,
+    decision: &policy::PolicyDecision,
+    audit_decision: AuditDecision,
+    forgejo_status: Option<u16>,
+) {
+    let event = AuditEvent {
+        request_id,
+        issuer: principal.issuer.clone(),
+        subject: principal.subject.clone(),
+        oauth_client: principal.oauth_client.clone(),
+        principal_type: mapping
+            .map(|mapping| PrincipalType::from(mapping.principal_type))
+            .unwrap_or(PrincipalType::Unknown),
+        forgejo_user_id: mapping.and_then(|mapping| mapping.forgejo_user_id),
+        forgejo_login: mapping.map(|mapping| mapping.forgejo_login.clone()),
+        tool: body.operation.clone(),
+        target: body.target.clone(),
+        risk: decision.risk,
+        decision: audit_decision,
+        approval_id: body.approval_id.clone(),
+        forgejo_status,
         duration_ms: 0,
         response_bytes: 0,
     };

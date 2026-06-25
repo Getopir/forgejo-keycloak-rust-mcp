@@ -95,7 +95,7 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, and `0.8.0` hardens approval gates with file-backed exact-payload approval records. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, `0.8.0` hardens approval gates with file-backed exact-payload approval records, and `0.9.0` adds single-use approval-backed pull-request merge. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
@@ -166,13 +166,15 @@ Examples of approval-gated actions:
 - Close a high-priority issue.
 - Change labels, milestones, or assignments in protected repositories.
 
-The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Version `0.8.0` adds persistent approval records with this behavior:
+The `0.6.0` approval-gate baseline denies high-risk execution when no approval ID is supplied. Version `0.8.0` adds persistent approval records, and `0.9.0` adds replay prevention plus the first executable high-risk tool:
 
 - A `create_approval` call records the requested high-risk operation, mapped user, target, state, body hash, and expiry.
 - The approval request records both the Keycloak subject and the mapped Forgejo account.
 - A later high-risk operation call must supply the approval ID and the same operation payload.
-- Expired, changed, revoked, missing, or wrong-principal approvals are denied.
-- High-risk execution still remains disabled until the executable mutation tools are implemented and tested.
+- The executor must be a different mapped principal from the approver.
+- Approved execution consumes the approval before calling Forgejo so it cannot be replayed.
+- Expired, changed, revoked, consumed, missing, or wrong-principal approvals are denied.
+- `merge_pull_request` is executable after approval and Forgejo ACL checks; release, admin, and destructive execution remain disabled.
 
 ## Phase 3
 

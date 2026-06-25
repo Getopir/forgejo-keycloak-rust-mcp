@@ -126,3 +126,5 @@ export FORGEJO_MCPD_APPROVAL_TTL_SECONDS=900
 ```
 
 The approval file is append-only JSONL. Store it on a filesystem readable and writable only by the gateway service account. Do not place it inside the public repository, a web root, or a shared workspace.
+
+Approval-backed execution requires a different mapped principal from the one that created the approval. For example, a human maintainer can create an approval and an identified agent can execute it, or one service principal can approve and another service principal can execute. Reusing the same mapped Forgejo login for both roles is denied.
