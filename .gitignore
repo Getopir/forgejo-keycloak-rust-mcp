@@ -1,0 +1,8 @@
+/target/
+/.env
+/.env.*
+!/examples/*.env
+*.db
+*.sqlite
+*.sqlite3
+*.log

@@ -1,0 +1,40 @@
+id: PRJ-FKRM-001
+title: Forgejo Keycloak Rust MCP Gateway
+status: planning
+source_inputs:
+  - docs/original-inputs/recommended-direction.md
+  - openspec/changes/forgejo-keycloak-rust-mcp/proposal.md
+  - docs/operations/live-readback-2026-06-25.md
+  - docs/operations/status-2026-06-25.md
+outcomes:
+  - code: FKRM-L001
+    title: Clean-room foundation and identity chain
+    done:
+      - Rust workspace builds and tests
+      - Keycloak protected-resource metadata is served
+      - Missing and wrong-audience tokens are rejected
+      - Policy registry denies missing scopes
+  - code: FKRM-L002
+    title: Forgejo delegation and principal mapping
+    done:
+      - Immutable Keycloak subject maps to Forgejo user ID/login
+      - Trusted-header backend is isolated from public ingress
+      - Sudo/PAT fallback is disabled unless explicitly configured
+  - code: FKRM-L003
+    title: Curated MCP and CLI surface
+    done:
+      - Repository, file, issue, PR, review, Actions, release, and notification tools exist
+      - Large responses are bounded and cursor based
+      - CLI and MCP call the same operation registry
+  - code: FKRM-L004
+    title: Generated Forgejo API coverage
+    done:
+      - Pinned Forgejo specs are normalized
+      - Every endpoint has classification and output budget
+      - Build fails on unclassified endpoint
+  - code: FKRM-L005
+    title: Lab VM and Neutrino verification
+    done:
+      - Blank Forgejo lab VM is installed
+      - Existing Keycloak issues human and agent tokens
+      - VM166 Neutrino agent proves authenticated Forgejo access through the gateway
