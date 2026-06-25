@@ -45,3 +45,4 @@ outcomes:
       - Blank Forgejo lab VM is not installed; VMID 103 is still a stopped template with Debian netinst ISO attached
       - Rawholding org repository creation requires a Forgejo token with write:organization or admin/web UI creation
       - VM166 Keycloak token currently has email/profile scopes only, not forgejo:repo:read
+      - VM171 POST /project-executions timed out for existing project aca00262-df4b-4755-9f29-afffb0d85b35 and did not create work orders

@@ -13,6 +13,7 @@ Current verified environment facts:
 | VM166 gateway run | `/home/devops/projects/forgejo-keycloak-rust-mcp` is cloned from Forgejo and synced to `origin/main`; `cargo test --workspace` passes; `forgejo-mcpd` runs on `127.0.0.1:7080` with PID file `/home/devops/.local/state/forgejo-keycloak-rust-mcp/forgejo-mcpd.pid`. |
 | VM166 Keycloak probe | `POST /mcp` with VM166 Keycloak agent token authenticates `neutrino1-agent` and returns HTTP `403` because the token lacks `forgejo:repo:read`. |
 | VM171 monitor | Proxmox VMID 171 is `neutrino-monitor`, IP `192.168.87.64`; health endpoint reports `status: ok`; OPIR-O M2M key is readable by `devops`. |
+| VM171 execution route | `POST /project-executions` for existing project `aca00262-df4b-4755-9f29-afffb0d85b35` timed out; `/work-orders?project_id=aca00262-df4b-4755-9f29-afffb0d85b35` reports `work_order_count: 0`. |
 | Proxmox | Aurora `192.168.87.195`; VMID 103 is a stopped `blankvm` template but still has a Debian netinst ISO attached. |
 
 Do not store or copy OPIR-O M2M keys, Forgejo tokens, Keycloak client secrets, or PATs into this repository.
