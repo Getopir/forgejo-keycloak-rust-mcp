@@ -1,6 +1,6 @@
 # MCP Functions
 
-`0.4.2` exposes a Phase 0 MCP probe endpoint. It validates authentication and evaluates policy for registered operation names. It does not execute Forgejo mutations yet.
+`0.5.0` exposes a Phase 1 MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, and executes the read-only repository metadata tool. It does not execute Forgejo mutations yet.
 
 ## HTTP Surface
 
@@ -55,9 +55,28 @@ Response fields:
 | Operation | Scope | Risk | Approval | Current behavior |
 | --- | --- | --- | --- | --- |
 | `gateway_probe` | `forgejo:repo:read` | Read private | No | Authenticates caller and returns policy decision metadata. |
-| `list_repository_metadata` | `forgejo:repo:read` | Read private | No | Policy entry only in this release. |
+| `list_repository_metadata` | `forgejo:repo:read` | Read private | No | Maps the Keycloak principal to a Forgejo account and fetches bounded repository metadata through Forgejo API when Phase 1 config is present. |
 | `create_issue_comment` | `forgejo:issue:write` | Write additive | No | Policy entry only in this release. |
 | `merge_pull_request` | `forgejo:pr:merge` | Write mutating | Yes | Policy entry only in this release. |
 | `delete_repository` | `forgejo:org:admin` | Destructive | Yes | Policy entry only in this release. |
 
 Unknown operations return `400`. Missing or invalid tokens return `401`. Missing required scope returns `403`.
+
+## Phase 1 Repository Metadata
+
+`list_repository_metadata` requires:
+
+- `FORGEJO_MCPD_PRINCIPAL_MAP`
+- `FORGEJO_MCPD_FORGEJO_URL`
+- a mapping entry whose `api_token_env` names an environment variable containing that mapped Forgejo principal's API token
+
+Example request:
+
+```json
+{
+  "operation": "list_repository_metadata",
+  "target": "rawholding/forgejo-keycloak-rust-mcp"
+}
+```
+
+The response includes the mapped Forgejo login, optional Forgejo user ID, trusted delegation headers derived from the mapping, and bounded repository metadata. It never returns the Forgejo API token.

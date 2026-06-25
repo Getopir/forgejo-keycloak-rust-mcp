@@ -4,13 +4,13 @@ This folder contains public promotion and project-readiness material for `forgej
 
 ## Codeberg Release
 
-Create a Codeberg release for `v0.4.2` using the text in [codeberg-release-v0.4.2.md](codeberg-release-v0.4.2.md).
+Create a Codeberg release for `v0.5.0` using the text in [codeberg-release-v0.5.0.md](codeberg-release-v0.5.0.md).
 
-Codeberg releases are separate from Git tags. The `v0.4.2` tag already exists, but the hosted release object must be created through the Codeberg frontend or API.
+Codeberg releases are separate from Git tags. The `v0.5.0` tag should be pushed first, then the hosted release object must be created through the Codeberg frontend or API.
 
 ## Codeberg Issues
 
-Open the public roadmap issues listed in [codeberg-roadmap-issues.md](codeberg-roadmap-issues.md).
+Open the public roadmap and hardening issues listed in [codeberg-roadmap-issues.md](codeberg-roadmap-issues.md).
 
 ## OpenSSF Best Practices
 

@@ -15,7 +15,7 @@ Project URL: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp`
 | Security reporting process | Started | `SECURITY.md`. |
 | Contribution process | Started | `CONTRIBUTING.md`. |
 | Roadmap | Ready | `docs/wiki/Roadmap.md`. |
-| Release notes | Ready | `docs/release-notes/0.4.2.md`. |
+| Release notes | Ready | `docs/release-notes/0.5.0.md`. |
 
 ## Gaps To Close
 

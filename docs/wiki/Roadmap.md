@@ -9,40 +9,43 @@
 
 ## Phase 1
 
-Phase 1 turns the current identity and policy probe into a usable read-only Forgejo gateway. The goal is to let an agent prove who it is through Keycloak, map that identity to the correct Forgejo account, and read repository metadata without giving the agent a reusable Forgejo token.
+Phase 1 turns the identity and policy probe into a usable read-only Forgejo gateway. Version `0.5.0` implements the baseline: an agent proves who it is through Keycloak, the gateway maps that identity to a Forgejo account, and the gateway can read bounded repository metadata through Forgejo API.
 
 ### Principal Mapping From Keycloak Subject To Forgejo Account
 
-The gateway will maintain a deterministic mapping between the Keycloak principal in the access token and the Forgejo account that should be used for downstream authorization.
+The gateway maintains a deterministic mapping between the Keycloak principal in the access token and the Forgejo account that should be used for downstream authorization.
 
-The minimum mapping inputs are:
+The `0.5.0` mapping inputs are:
 
 - Keycloak issuer.
 - Keycloak subject (`sub`).
-- Optional Keycloak preferred username, email, groups, and roles.
-- Forgejo user ID or username.
-- Mapping status, such as active, disabled, or pending review.
+- Forgejo login.
+- Optional Forgejo user ID.
+- Optional Forgejo email and full name for trusted-header delegation.
+- Enabled or disabled mapping state.
+- Principal type: human, agent, or unknown.
+- Environment variable name that contains the mapped principal's Forgejo API token.
 
 The mapping must be explicit. The gateway should not trust an arbitrary username supplied by the agent or infer a Forgejo user from display names. The Keycloak `sub` claim is stable and should be the primary identity key. Username and email claims are useful for operator display and audit, but they can change and should not be the only binding.
 
 Expected behavior:
 
-- A token from an unknown subject is rejected or receives only a low-risk discovery response.
+- A token from an unknown subject is rejected before Forgejo-backed calls.
 - A disabled mapping is rejected even if the token is valid.
 - A mapped subject is recorded in audit output as both the Keycloak principal and the Forgejo principal.
 - Mapping changes are auditable and should be treated as security-sensitive administration.
 
 ### Forgejo Trusted-Header Delegation
 
-Forgejo supports deployments where a trusted reverse proxy supplies authenticated user information through headers. Phase 1 should use that pattern only between the gateway and Forgejo, never directly from arbitrary clients.
+Forgejo supports deployments where a trusted reverse proxy supplies authenticated user information through headers. Phase 1 derives those headers from the mapped Forgejo principal. Use that pattern only between the gateway or a trusted reverse proxy and Forgejo, never directly from arbitrary clients.
 
-The intended flow is:
+The trusted-header flow is:
 
 - The agent calls the Rust MCP gateway with a Keycloak bearer token.
 - The gateway validates issuer, signature, expiry, audience, and required claims.
 - The gateway resolves the mapped Forgejo principal.
-- The gateway forwards the request to Forgejo through a private network path or loopback path.
-- The gateway injects the trusted identity header expected by Forgejo.
+- The gateway derives the trusted identity headers expected by Forgejo from the mapping.
+- A deployment-specific reverse proxy may forward those headers to Forgejo over a private path.
 - Forgejo still performs its own repository and organization ACL checks for that mapped user.
 
 Security requirements:
@@ -54,15 +57,14 @@ Security requirements:
 
 ### Read-Only Repository Metadata Tool
 
-The first concrete Forgejo-backed MCP tool should be read-only repository metadata. It should let agents answer basic questions about a repository without exposing write capabilities.
+The first concrete Forgejo-backed MCP tool is read-only repository metadata. It lets agents answer basic questions about a repository without exposing write capabilities.
 
-Expected inputs:
+Inputs:
 
-- Repository owner.
-- Repository name.
-- Optional fields selector for metadata categories.
+- `operation`: `list_repository_metadata`.
+- `target`: repository in `owner/repository` form.
 
-Expected output:
+Output:
 
 - Repository full name.
 - Visibility and archived state.
@@ -72,6 +74,7 @@ Expected output:
 - Last updated timestamp.
 - Open issue and pull-request counts if available.
 - Permissions for the mapped Forgejo principal, such as read, write, admin, or none.
+- Trusted delegation headers derived from the mapping.
 
 Non-goals for Phase 1:
 
@@ -80,7 +83,7 @@ Non-goals for Phase 1:
 - Merging pull requests.
 - Reading secrets, deploy keys, webhooks, private environment variables, or admin settings.
 
-Acceptance criteria:
+Implemented acceptance criteria:
 
 - A mapped read-only agent can fetch metadata for a repository it can read in Forgejo.
 - The same agent is denied for a repository it cannot read in Forgejo.

@@ -27,7 +27,15 @@ FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
 FORGEJO_MCPD_BIND=127.0.0.1:7080
 ```
 
-The daemon does not need a Forgejo token for Phase 0 because it only validates identity and operation policy.
+For Phase 1 repository metadata, add:
+
+```sh
+FORGEJO_MCPD_FORGEJO_URL=https://forgejo.example.org
+FORGEJO_MCPD_PRINCIPAL_MAP=/etc/forgejo-mcpd/principals.json
+FORGEJO_AGENT_READER_TOKEN=...
+```
+
+The principal map stores `api_token_env` names, not token values. Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` and `/etc/forgejo-mcpd/principals.json` out of source control if they contain production identities or runtime token names.
 
 ## Systemd Example
 

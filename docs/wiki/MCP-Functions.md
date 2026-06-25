@@ -15,4 +15,4 @@ The current release exposes:
 - `merge_pull_request`
 - `delete_repository`
 
-Only `gateway_probe` returns a concrete Phase 0 probe response today. The other operations are policy-registered for risk and scope validation before Forgejo execution is implemented.
+`gateway_probe` returns identity and policy metadata. `list_repository_metadata` executes a read-only Forgejo API lookup when Phase 1 principal mapping and Forgejo URL settings are configured. Mutating operations are still policy-registered only.

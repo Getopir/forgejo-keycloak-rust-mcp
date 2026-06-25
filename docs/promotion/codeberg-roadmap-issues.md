@@ -2,70 +2,66 @@
 
 Open these as public Codeberg issues.
 
-## Phase 1: principal mapping
+## Phase 1 hardening: principal mapping
 
-Title: `Phase 1: principal mapping`
+Title: `Phase 1 hardening: principal mapping`
 
 Body:
 
 ```markdown
-Implement immutable Keycloak-to-Forgejo principal mapping.
+Harden immutable Keycloak-to-Forgejo principal mapping after the `0.5.0` baseline.
 
 Scope:
 
-- Map `(issuer, subject)` from a validated Keycloak token to a Forgejo account.
-- Treat `sub` as the stable identity key.
-- Store/display Forgejo username and optional Forgejo user ID.
-- Reject unknown or disabled mappings by default.
+- Add mapping management commands or an operator workflow.
+- Add mapping validation for duplicate `(issuer, subject)` entries.
+- Add stricter validation for `api_token_env` names.
 - Ensure caller-supplied usernames cannot impersonate another Forgejo user.
-- Include both Keycloak and Forgejo principal information in audit events.
+- Add audit event coverage for mapping file reloads or operator changes.
 
 Acceptance:
 
-- Valid mapped principal is accepted for Phase 1 read-only calls.
-- Unknown principal is denied before any Forgejo call.
-- Disabled mapping is denied before any Forgejo call.
-- Tests cover unknown, disabled, and mapped principals.
+- Tests cover duplicate mappings and invalid token environment names.
+- Documentation explains the operator lifecycle for mapping creation, disablement, and rotation.
 ```
 
-## Phase 1: trusted-header delegation
+## Phase 1 hardening: trusted-header delegation
 
-Title: `Phase 1: trusted-header delegation`
+Title: `Phase 1 hardening: trusted-header delegation`
 
 Body:
 
 ```markdown
-Implement and document the trusted-header delegation boundary for Forgejo.
+Harden and document the trusted-header delegation boundary for Forgejo after the `0.5.0` header derivation baseline.
 
 Scope:
 
 - Document Forgejo reverse-proxy authentication settings.
-- Ensure trusted identity headers are only emitted by the MCP gateway or trusted proxy path.
-- Strip or ignore caller-supplied identity headers.
+- Add an integration deployment example where only the gateway or reverse proxy can reach the trusted Forgejo path.
+- Add explicit tests or checks for incoming spoofed trusted headers.
 - Keep Forgejo as the final repository/organization ACL authority.
 - Document that Forgejo reverse-proxy auth does not apply to API requests, so API-backed tools need a safe credential strategy.
 
 Acceptance:
 
 - Configuration docs name required Forgejo settings and trusted proxy limits.
-- Tests prove caller-supplied identity headers do not influence mapped identity.
+- Tests prove caller-supplied identity headers do not influence mapped identity or generated delegation values.
 - Audit records include delegated Forgejo login when delegation is used.
 ```
 
-## Phase 1: read-only repository metadata tool
+## Phase 1 hardening: read-only repository metadata tool
 
-Title: `Phase 1: read-only repository metadata tool`
+Title: `Phase 1 hardening: read-only repository metadata tool`
 
 Body:
 
 ```markdown
-Implement the first real Forgejo-backed MCP tool: read-only repository metadata.
+Harden the first real Forgejo-backed MCP tool: read-only repository metadata.
 
 Scope:
 
-- Add a bounded `list_repository_metadata` implementation.
-- Require `forgejo:repo:read`.
-- Require a mapped Forgejo principal.
+- Add live integration tests against a disposable Forgejo repository.
+- Add configurable response field selection if needed.
 - Return repository full name, visibility, archived state, default branch, description, safe clone URLs, update timestamp, issue/PR counts when available, and mapped-principal permissions.
 - Do not return secrets, deploy keys, webhooks, runners, admin settings, or private environment values.
 

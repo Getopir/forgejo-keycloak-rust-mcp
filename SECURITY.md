@@ -2,7 +2,7 @@
 
 ## Supported Version
 
-`0.4.2` is the current public beta release.
+`0.5.0` is the current public beta release.
 
 ## Reporting
 

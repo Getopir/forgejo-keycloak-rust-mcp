@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.4.2` means:
+Version `0.5.0` means:
 
 - `0`: pre-1.0 official release line.
-- `4`: beta series 4.
-- `2`: second patch release for beta series 4.
+- `5`: beta series 5.
+- `0`: baseline release for beta series 5.
 
 The governing rule is:
 
@@ -19,20 +19,24 @@ This project does not copy or translate GPL implementation code from other Forge
 ## Project Status
 
 - Current: Phase 0 identity and policy probe is complete.
-- Next: Phase 1 adds Forgejo principal mapping and the first read-only repository metadata tool.
+- Current: Phase 1 adds Forgejo principal mapping and the first read-only repository metadata tool when configured.
+- Next: Phase 2 curated issue, pull request, review, release, and notification tools.
 - Not yet: full issue, pull request, release, notification, admin, or generated Forgejo API coverage.
 
 ## Current Scope
 
-`0.4.2` is a Phase 0 gateway release:
+`0.5.0` is a Phase 1 gateway release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
 - Provides a deterministic operation policy registry.
 - Emits structured audit records without tokens or secret values.
 - Exposes an authenticated `/mcp` policy probe for agents.
+- Maps Keycloak `(issuer, subject)` principals to Forgejo accounts from an explicit local mapping file.
+- Executes read-only repository metadata lookup through Forgejo API using the mapped principal's configured token environment variable.
+- Builds trusted reverse-proxy identity headers from the mapped principal for deployments that use Forgejo reverse-proxy authentication.
 
-Full Forgejo API execution is intentionally not enabled yet. The current `/mcp` handler proves identity and policy decisions before Forgejo delegation is added.
+Mutating Forgejo API execution is intentionally not enabled yet.
 
 ## Install
 
@@ -103,6 +107,7 @@ curl -sS \
 - [Testing](docs/testing.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 0.5.0](docs/release-notes/0.5.0.md)
 - [Release Notes 0.4.2](docs/release-notes/0.4.2.md)
 - [Release Notes 0.4.1](docs/release-notes/0.4.1.md)
 - [Release Notes 0.4.0](docs/release-notes/0.4.0.md)
@@ -114,7 +119,7 @@ curl -sS \
 - `crates/identity`: Keycloak OIDC discovery, JWKS fetch, JWT claim and audience validation.
 - `crates/policy`: operation registry, risk classes, scope checks, approval requirements.
 - `crates/audit`: structured audit event schema.
-- `crates/forgejo-mcpd`: HTTP daemon and Phase 0 MCP probe.
+- `crates/forgejo-mcpd`: HTTP daemon, principal mapping, Forgejo metadata client, and MCP probe.
 - `openspec/changes/forgejo-keycloak-rust-mcp`: intended behavior and acceptance criteria.
 - `docs/wiki`: Markdown wiki fallback for public Forgejo/Codeberg hosting.
 
