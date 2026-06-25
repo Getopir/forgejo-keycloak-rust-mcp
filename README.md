@@ -1,6 +1,6 @@
 # forgejo-keycloak-rust-mcp
 
-[![Get it on Codeberg](https://get-it-on.codeberg.org/get-it-on-blue-on-white.svg)](https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp)
+
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
@@ -137,3 +137,5 @@ See [SECURITY.md](SECURITY.md) before reporting vulnerabilities or sharing logs.
 ## License
 
 This project is licensed under `AGPL-3.0-or-later`. See [LICENSE](LICENSE) and the full text in [LICENSES/AGPL-3.0-or-later.txt](LICENSES/AGPL-3.0-or-later.txt).
+
+[![Get it on Codeberg](https://get-it-on.codeberg.org/get-it-on-blue-on-white.svg)](https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp)
