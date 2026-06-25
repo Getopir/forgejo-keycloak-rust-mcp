@@ -1,6 +1,6 @@
 id: PRJ-FKRM-001
 title: Forgejo Keycloak Rust MCP Gateway
-status: planning
+status: active
 source_inputs:
   - docs/original-inputs/recommended-direction.md
   - openspec/changes/forgejo-keycloak-rust-mcp/proposal.md
@@ -14,12 +14,14 @@ outcomes:
       - Keycloak protected-resource metadata is served
       - Missing and wrong-audience tokens are rejected
       - Policy registry denies missing scopes
+      - VM166 clone runs the daemon from Forgejo commit 4a531ddf24f81c23502a398c443633010207927c
   - code: FKRM-L002
     title: Forgejo delegation and principal mapping
     done:
       - Immutable Keycloak subject maps to Forgejo user ID/login
       - Trusted-header backend is isolated from public ingress
       - Sudo/PAT fallback is disabled unless explicitly configured
+      - VM166 Keycloak token authenticates neutrino1-agent and is denied without forgejo:repo:read
   - code: FKRM-L003
     title: Curated MCP and CLI surface
     done:
@@ -35,6 +37,11 @@ outcomes:
   - code: FKRM-L005
     title: Lab VM and Neutrino verification
     done:
-      - Blank Forgejo lab VM is installed
       - Existing Keycloak issues human and agent tokens
-      - VM166 Neutrino agent proves authenticated Forgejo access through the gateway
+      - VM166 runs the gateway from Forgejo commit 4a531ddf24f81c23502a398c443633010207927c
+      - VM166 Keycloak token authenticates neutrino1-agent through the gateway
+      - Current VM166 proof reaches authenticated gateway denial; granting forgejo:repo:read is still required for allowed Forgejo access
+    blockers:
+      - Blank Forgejo lab VM is not installed; VMID 103 is still a stopped template with Debian netinst ISO attached
+      - Rawholding org repository creation requires a Forgejo token with write:organization or admin/web UI creation
+      - VM166 Keycloak token currently has email/profile scopes only, not forgejo:repo:read
