@@ -2,11 +2,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `0.3.15` means:
+Version `0.4.0` means:
 
 - `0`: pre-1.0 official release line.
-- `3`: beta series 3.
-- `15`: fix release 15 in that beta series.
+- `4`: beta series 4.
+- `0`: baseline release for that beta series.
 
 The governing rule is:
 
@@ -16,7 +16,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`0.3.15` is a Phase 0 gateway release:
+`0.4.0` is a Phase 0 gateway release:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -93,7 +93,7 @@ curl -sS \
 - [MCP Functions](docs/mcp-functions.md)
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
-- [Release Notes 0.3.15](docs/release-notes/0.3.15.md)
+- [Release Notes 0.4.0](docs/release-notes/0.4.0.md)
 - [Lab Deployment](deploy/lab/README.md)
 - [Wiki Fallback](docs/wiki/Home.md)
 

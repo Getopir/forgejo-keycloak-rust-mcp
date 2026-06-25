@@ -17,4 +17,4 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 
 ## Release
 
-Current public release: `0.3.15`.
+Current public release: `0.4.0`.

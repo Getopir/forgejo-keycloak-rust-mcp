@@ -43,6 +43,35 @@ With a valid token, test these operation decisions:
 | `delete_repository` | `forgejo:org:admin` | `200 allowed=true approval_required=true` |
 | `unknown_operation` | any | `400` |
 
+## Live Keycloak Agent Matrix
+
+Before cutting `0.4.0`, the gateway was tested with two Keycloak service-account agents against an internal Forgejo target repository.
+
+The full-scope agent carried:
+
+```text
+forgejo:repo:read forgejo:issue:write forgejo:pr:merge forgejo:org:admin
+```
+
+The read-only agent carried:
+
+```text
+forgejo:repo:read
+```
+
+Required checks:
+
+| Case | Expected |
+| --- | --- |
+| Full-scope agent calls all registered operations | `200 allowed=true` |
+| Read-only agent calls `gateway_probe` | `200 allowed=true` |
+| Read-only agent calls write, merge, or delete operations | `403 allowed=false` |
+| Unknown operation | `400` |
+| Missing bearer token | `401` with protected-resource metadata |
+| Invalid scheme or invalid JWT | `401` |
+
+Do not store the test client secrets or bearer tokens in this repository. If a live realm advertises an internal hostname in `jwks_uri`, run the gateway where that hostname resolves or use an environment-local discovery shim that preserves the real issuer and points `jwks_uri` at the same Keycloak instance through a resolvable LAN name.
+
 Before publishing a public release, run the test suite and a repository secret scanner such as `gitleaks`, `trufflehog`, or your hosting provider's equivalent. Also grep for internal hostnames, private network addresses, and deployment-only project IDs.
 
 ```sh
