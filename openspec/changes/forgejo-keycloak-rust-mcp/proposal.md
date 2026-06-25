@@ -19,7 +19,6 @@ Agents need structured Forgejo access without sharing a process-wide Forgejo tok
 - `docs/original-inputs/recommended-direction.md`
 - Sqcows as behavioral API coverage checklist only.
 - goern as behavioral MCP surface checklist only.
-- Local Forgejo, Keycloak, OPIR-O, and Neutrino VM readbacks recorded in `docs/operations/live-readback-2026-06-25.md`.
 
 ## Acceptance
 

@@ -1,10 +1,6 @@
 # Recommended Direction
 
-The original user-supplied architecture brief is preserved in the Codex attachment for this run:
-
-`C:\Users\Eier\.codex\attachments\b0d49af6-7e17-4e8d-818d-597e76b8a75c\pasted-text.txt`
-
-This repository treats that brief as a source input. The implementation direction is:
+This repository follows a clean-room architecture direction:
 
 - Build a clean-room Rust project rather than porting Sqcows or goern.
 - Use Sqcows as an API coverage checklist.

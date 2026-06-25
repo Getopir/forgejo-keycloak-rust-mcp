@@ -10,7 +10,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "ssh://git@192.168.87.91:222/Rawholding/forgejo-keycloak-rust-mcp.git"
+repository = "https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp"
 rust-version = "1.95"
 
 [workspace.lints.rust]
