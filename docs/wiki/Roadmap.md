@@ -1,8 +1,23 @@
 # Implemented Features And Remaining Roadmap
 
-Most of the original phase roadmap is now implemented in `1.0.0`. The sections
-below are retained as design history and as a map from planned phases to shipped
-features.
+Most of the original phase roadmap is now implemented. The sections below are
+retained as design history and as a map from planned phases to shipped features.
+
+## Completion Status
+
+| Area | Status | Current release state |
+| --- | --- | --- |
+| Phase 0 identity and policy probe | Complete | Keycloak JWT validation, OAuth protected-resource metadata, `/mcp` policy probe, and audit schema are shipped. |
+| Phase 1 Forgejo identity bridge | Complete | Principal mapping, trusted-header spoof rejection, trusted-header derivation, and read-only repository metadata are shipped. |
+| Phase 2 curated Forgejo tools | Complete | Bounded issue, pull-request, review, release, notification, comment, approval, merge, and release-create tools are shipped. |
+| Phase 3 generated API classification | Complete | The Forgejo Swagger document is pinned, 491 operations are classified, and bounded coverage metadata is exposed. |
+| Phase 3 generated endpoint execution | Not complete by design | Unreviewed generated endpoints remain metadata-only and disabled until each endpoint has reviewed schemas, scopes, output limits, and approval policy. |
+| Admin and destructive operations | Not complete by design | Admin execution, repository deletion, destructive release operations, deploy-key/webhook/secret mutation, and similar high-risk paths remain disabled. |
+
+In short: the original product baseline is shipped. The remaining roadmap is
+about safely expanding generated endpoint execution and admin/destructive
+operation coverage without turning the gateway into raw Forgejo API-token
+forwarding.
 
 ## Phase 0
 
