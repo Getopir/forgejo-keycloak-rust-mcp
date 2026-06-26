@@ -1,19 +1,34 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
-name = "forgejo-mcpd"
-version = "1.0.0"
+name = "forgejo-keycloak-rust-mcp"
+version = "1.0.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement."
+readme = "../../README.md"
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "forgejo-keycloak-rust-mcpd"
+path = "src/main.rs"
+
+[[bin]]
+name = "forgejo-mcpctl"
+path = "src/bin/forgejo-mcpctl.rs"
 
 [dependencies]
 anyhow.workspace = true
-audit = { path = "../audit" }
+audit = { package = "forgejo-keycloak-mcp-audit", path = "../audit", version = "1.0.1" }
 axum.workspace = true
 clap.workspace = true
-identity = { path = "../identity" }
-policy = { path = "../policy" }
+identity = { package = "forgejo-keycloak-mcp-identity", path = "../identity", version = "1.0.1" }
+policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.0.1" }
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

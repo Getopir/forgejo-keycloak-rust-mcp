@@ -1,6 +1,6 @@
 # Configuration
 
-`forgejo-mcpd` accepts command-line flags and matching environment variables.
+`forgejo-keycloak-rust-mcpd` accepts command-line flags and matching environment variables.
 
 | Flag | Environment | Required | Description |
 | --- | --- | --- | --- |

@@ -13,7 +13,11 @@ resolver = "2"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp"
+homepage = "https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp"
+documentation = "https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/wiki"
 rust-version = "1.95"
+keywords = ["forgejo", "keycloak", "mcp", "oauth", "agents"]
+categories = ["command-line-utilities", "web-programming::http-server", "authentication"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

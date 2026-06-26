@@ -9,7 +9,7 @@ cargo test --workspace
 Run the daemon locally:
 
 ```sh
-cargo run -p forgejo-mcpd -- \
+cargo run -p forgejo-keycloak-rust-mcp --bin forgejo-keycloak-rust-mcpd -- \
   --issuer https://keycloak.example.org/realms/forgejo-agents \
   --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
   --audience forgejo-mcp \

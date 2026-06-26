@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.0.0` means:
+Version `1.0.1` means:
 
 - `1`: first stable public release line.
 - `0`: minor feature series.
-- `0`: first stable patch release.
+- `1`: first stable packaging patch release.
 
 The governing rule is:
 
@@ -28,7 +28,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.0.0` is the first stable release of the hardened Forgejo Keycloak MCP gateway:
+`1.0.1` is the crates.io-ready packaging release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -72,14 +72,20 @@ Build and test:
 
 ```sh
 cargo test --workspace
-cargo build --release -p forgejo-mcpd
-cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
+cargo build --release -p forgejo-keycloak-rust-mcp
+cargo build --release -p forgejo-keycloak-rust-mcp --bin forgejo-mcpctl
+```
+
+Install from crates.io after publication:
+
+```sh
+cargo install forgejo-keycloak-rust-mcp --locked
 ```
 
 Run:
 
 ```sh
-forgejo-mcpd \
+forgejo-keycloak-rust-mcpd \
   --issuer https://keycloak.example.org/realms/forgejo-agents \
   --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
   --audience forgejo-mcp \
@@ -97,7 +103,7 @@ export FORGEJO_MCPD_AUDIENCE=forgejo-mcp
 export FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
 export FORGEJO_MCPD_BIND=127.0.0.1:7080
 export FORGEJO_MCPD_APPROVAL_STORE=/var/lib/forgejo-mcpd/approvals.jsonl
-forgejo-mcpd
+forgejo-keycloak-rust-mcpd
 ```
 
 ## Endpoints
@@ -134,7 +140,9 @@ curl -sS \
 - [Testing](docs/testing.md)
 - [Security Checks](docs/security-checks.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
+- [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.0.1](docs/release-notes/1.0.1.md)
 - [Release Notes 1.0.0](docs/release-notes/1.0.0.md)
 - [Release Notes 0.10.0](docs/release-notes/0.10.0.md)
 - [Release Notes 0.9.0](docs/release-notes/0.9.0.md)
@@ -153,7 +161,7 @@ curl -sS \
 - `crates/identity`: Keycloak OIDC discovery, JWKS fetch, JWT claim and audience validation.
 - `crates/policy`: operation registry, risk classes, scope checks, approval requirements.
 - `crates/audit`: structured audit event schema.
-- `crates/forgejo-mcpd`: HTTP daemon, principal mapping, Forgejo client, curated MCP tools, and MCP probe.
+- `crates/forgejo-mcpd`: publishable `forgejo-keycloak-rust-mcp` binary package, HTTP daemon, principal mapping, Forgejo client, curated MCP tools, and MCP probe.
 - `vendor/forgejo-api`: pinned Forgejo Swagger document and provenance.
 - `tools/generate_forgejo_api_catalog.py`: reproducible generated API coverage report.
 - `openspec/changes/forgejo-keycloak-rust-mcp`: intended behavior and acceptance criteria.

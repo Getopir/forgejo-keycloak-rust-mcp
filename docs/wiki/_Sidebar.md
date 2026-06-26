@@ -4,6 +4,7 @@
 - [Install](Install.md)
 - [Configuration](Configuration.md)
 - [Features](Features.md)
+- [Crates.io Install](Crates-IO-Install.md)
 - [MCP Functions](MCP-Functions.md)
 - [Generated API Coverage](Generated-API-Coverage.md)
 - [Agent Setup](Agent-Setup.md)

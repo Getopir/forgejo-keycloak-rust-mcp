@@ -1,17 +1,30 @@
 # Install
 
+Install from crates.io after publication:
+
+```sh
+cargo install forgejo-keycloak-rust-mcp --locked
+```
+
+This installs:
+
+```text
+forgejo-keycloak-rust-mcpd
+forgejo-mcpctl
+```
+
 Build:
 
 ```sh
 cargo test --workspace
-cargo build --release -p forgejo-mcpd
-cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
+cargo build --release -p forgejo-keycloak-rust-mcp
+cargo build --release -p forgejo-keycloak-rust-mcp --bin forgejo-mcpctl
 ```
 
 Run:
 
 ```sh
-forgejo-mcpd \
+forgejo-keycloak-rust-mcpd \
   --issuer https://keycloak.example.org/realms/forgejo-agents \
   --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
   --audience forgejo-mcp \

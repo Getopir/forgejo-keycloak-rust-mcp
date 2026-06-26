@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 const FORGEJO_API_SPEC_JSON: &str =
-    include_str!("../../../vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json");
+    include_str!("../vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json");
 const FORGEJO_API_SPEC_SHA256: &str =
     "a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f";
 

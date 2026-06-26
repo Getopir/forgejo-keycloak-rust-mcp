@@ -1,19 +1,34 @@
 # Install Guide
 
+## Install From Crates.io
+
+After the crates.io release is published, users can install both binaries with:
+
+```sh
+cargo install forgejo-keycloak-rust-mcp --locked
+```
+
+Installed binaries:
+
+```text
+forgejo-keycloak-rust-mcpd
+forgejo-mcpctl
+```
+
 ## Build From Source
 
 ```sh
 git clone https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp.git
 cd forgejo-keycloak-rust-mcp
 cargo test --workspace
-cargo build --release -p forgejo-mcpd
-cargo build --release -p forgejo-mcpd --bin forgejo-mcpctl
+cargo build --release -p forgejo-keycloak-rust-mcp
+cargo build --release -p forgejo-keycloak-rust-mcp --bin forgejo-mcpctl
 ```
 
 The release binary is:
 
 ```text
-target/release/forgejo-mcpd
+target/release/forgejo-keycloak-rust-mcpd
 target/release/forgejo-mcpctl
 ```
 
@@ -52,7 +67,7 @@ Wants=network-online.target
 User=forgejo-mcp
 Group=forgejo-mcp
 EnvironmentFile=/etc/forgejo-mcpd/forgejo-mcpd.env
-ExecStart=/usr/local/bin/forgejo-mcpd
+ExecStart=/usr/local/bin/forgejo-keycloak-rust-mcpd
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
