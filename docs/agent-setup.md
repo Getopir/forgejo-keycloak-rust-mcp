@@ -38,6 +38,45 @@ Recommended token path:
 
 The gateway does not require agents to know Forgejo personal access tokens. Downstream Forgejo tokens stay in the gateway runtime environment and are selected through the principal map.
 
+## OpenBao-Backed Token Handle
+
+Deployments that already use OpenBao for agent secrets can expose the Keycloak
+MCP client through an agent-scoped handle instead of placing credentials in
+repo files or prompts.
+
+Recommended handle shape:
+
+```text
+kv/data/<deployment>/agents/<agent-id>/forgejo-keycloak-rust-mcp
+```
+
+Required fields inside the handle:
+
+```json
+{
+  "client_id": "forgejo-mcp-agent",
+  "client_secret": "<stored only in OpenBao>",
+  "token_url": "https://keycloak.example.org/realms/forgejo-agents/protocol/openid-connect/token",
+  "scope": "forgejo:repo:read forgejo:pr:write",
+  "gateway_url": "https://mcp.example.org/mcp"
+}
+```
+
+Agent flow:
+
+1. Authenticate the agent to OpenBao with its own identity, for example a
+   Keycloak JWT bound to that agent's OpenBao role.
+2. Read only the agent-scoped MCP handle.
+3. Exchange `client_id` and `client_secret` with Keycloak using
+   `grant_type=client_credentials`.
+4. Store the returned short-lived MCP bearer token in memory as `ACCESS_JWT`.
+5. Call the gateway with `Authorization: Bearer ${ACCESS_JWT}`.
+
+Do not expose this handle to every agent by default. Grant it only to agents or
+work-order roles that are allowed to use the mapped Forgejo principal. For
+approval-required operations, configure at least two mapped principals so the
+approver and executor are different identities.
+
 ## Probe Example
 
 ```sh

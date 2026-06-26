@@ -71,6 +71,31 @@ Authenticated MCP readback:
 - `forgejo_api_coverage` with `query=repository` and `limit=3` returned `200`.
 - `list_repository_issues` returned `403` with reason `missing required scope forgejo:issue:read`, confirming scope enforcement.
 
+Follow-up PR auth readback on 2026-06-26:
+
+- VM166 `neutrino1` proved the agent-side Keycloak -> OpenBao login path, but
+  its OpenBao policy denied production MCP secret paths. That is the expected
+  least-privilege result for the current agent role.
+- A VM166-scoped OpenBao handle was then provisioned for
+  `forgejo-keycloak-rust-mcp`. The handle contains the Keycloak MCP client
+  metadata and secret inside OpenBao only; no secret value was printed or added
+  to source control.
+- Keycloak client `forgejo-mcp-live-agent` now has optional
+  `forgejo:pr:write` scope in addition to default `forgejo:repo:read`.
+- Keycloak CT `102` was restarted from the `services` Proxmox node to load the
+  updated client-scope relation.
+- A fresh service-account token requested with `forgejo:repo:read
+  forgejo:pr:write` contained issuer `http://keycloak:8080/realms/master`,
+  audience `mcp-server`, and both Forgejo scopes.
+- Live `gateway_probe` for `create_pull_request` returned `200`.
+- Live `create_pull_request` dry-run returned `200` with `allowed=true` and
+  `approval_required=true`; no pull request was created.
+- VM166 read its OpenBao handle, minted a short-lived MCP bearer token, and
+  repeated the live `create_pull_request` dry-run successfully from the agent
+  path.
+- Full mutating PR creation still needs a second mapped principal because the
+  approval system rejects same-principal approval and execution.
+
 Notes:
 
 - The older Go `forgejo-mcp.service` was stopped and disabled because it exposed a Forgejo token in the process command line. Port `8090` is no longer listening.

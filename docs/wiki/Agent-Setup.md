@@ -22,6 +22,24 @@ Preferred production flow:
 
 Agents do not need Forgejo personal access tokens. The gateway maps the Keycloak subject to a Forgejo principal and reads the downstream Forgejo token from the gateway runtime environment.
 
+## OpenBao-Backed Token Handle
+
+If agents already authenticate to OpenBao, store the MCP Keycloak client in an
+agent-scoped handle such as:
+
+```text
+kv/data/<deployment>/agents/<agent-id>/forgejo-keycloak-rust-mcp
+```
+
+The handle should contain `client_id`, `client_secret`, `token_url`, `scope`,
+and `gateway_url`. The agent reads the handle through its own OpenBao role,
+exchanges the client credentials with Keycloak, keeps the returned MCP bearer
+token in memory, and calls `/mcp`.
+
+Do not grant the handle to every agent by default. Approval-required operations
+also need at least two mapped principals because the gateway rejects
+same-principal approval and execution.
+
 ## Pull-Request Bootstrap
 
 Use `create_pull_request` after a branch has already been pushed:
