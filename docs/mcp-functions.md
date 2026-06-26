@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.0.2` exposes a hardened, curated, generated-classification, and crates.io-ready MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
+`1.1.0` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, creates pull requests after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, and returns bounded generated Forgejo API coverage metadata.
 
 ## HTTP Surface
 
@@ -25,6 +25,35 @@ Returns OAuth protected-resource metadata for clients:
   "resource_signing_alg_values_supported": ["RS256"]
 }
 ```
+
+### `GET /capabilities`
+
+Returns unauthenticated operation metadata for operators and agents:
+
+```json
+{
+  "operations": [
+    {
+      "name": "create_pull_request",
+      "scope": "forgejo:pr:write",
+      "risk": "write_mutating",
+      "approval_required": true,
+      "description": "Create a pull request and optional review requests after exact-payload approval."
+    }
+  ],
+  "disabled_but_planned": [
+    {
+      "name": "get_pr_checks",
+      "scope": "forgejo:pr:read",
+      "risk": "read_private",
+      "approval_required": false,
+      "reason": "planned read operation for PR readiness"
+    }
+  ]
+}
+```
+
+This endpoint does not expose secrets and does not prove access to Forgejo data. It is for discovery of operation names, required scopes, risk classes, approval policy, and planned disabled operations.
 
 ### `POST /mcp`
 
@@ -81,6 +110,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_repository_issues` | `forgejo:issue:read` | Read private | No | Lists bounded issue summaries for `owner/repository`. |
 | `create_issue_comment` | `forgejo:issue:write` | Write additive | No | Creates an issue or pull-request conversation comment for `owner/repository#number`. |
 | `list_pull_requests` | `forgejo:pr:read` | Read private | No | Lists bounded pull-request summaries for `owner/repository`. |
+| `create_pull_request` | `forgejo:pr:write` | Write mutating | Yes | Dry-run preview without approval, or approval-backed pull-request creation for `owner/repository`. Optional reviewer requests run after PR creation and are reported separately. |
 | `list_pull_request_reviews` | `forgejo:pr:read` | Read private | No | Lists bounded review summaries for `owner/repository#number`. |
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
@@ -155,7 +185,47 @@ Examples:
 }
 ```
 
-`create_issue_comment` is additive and still relies on Forgejo ACLs for the mapped user. `merge_pull_request` is the first high-risk executable write and requires a valid approval record created by a different mapped principal.
+`create_issue_comment` is additive and still relies on Forgejo ACLs for the mapped user. `create_pull_request`, `merge_pull_request`, and `create_release` are high-risk executable writes and require valid approval records created by different mapped principals.
+
+Create pull-request dry-run preview:
+
+```json
+{
+  "operation": "create_pull_request",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
+  "body": "{\"head\":\"feature-branch\",\"base\":\"main\",\"title\":\"Add PR bootstrap\",\"body\":\"Details for reviewers\",\"assignees\":[\"alice\"],\"reviewers\":[\"bob\"]}",
+  "dry_run": true
+}
+```
+
+Create an approval record:
+
+```json
+{
+  "operation": "create_approval",
+  "requested_operation": "create_pull_request",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
+  "body": "{\"head\":\"feature-branch\",\"base\":\"main\",\"title\":\"Add PR bootstrap\",\"body\":\"Details for reviewers\",\"assignees\":[\"alice\"],\"reviewers\":[\"bob\"]}"
+}
+```
+
+Execute with the returned `approval_id` and the exact same payload:
+
+```json
+{
+  "operation": "create_pull_request",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
+  "body": "{\"head\":\"feature-branch\",\"base\":\"main\",\"title\":\"Add PR bootstrap\",\"body\":\"Details for reviewers\",\"assignees\":[\"alice\"],\"reviewers\":[\"bob\"]}",
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
+}
+```
+
+Pull-request body fields:
+
+- Required: `head`, `base`, `title`.
+- Optional: `body`, `draft`, `assignee`, `assignees`, `reviewers`.
+
+Reviewer requests are a second Forgejo call after PR creation. If reviewer assignment fails, the response still returns the created pull request with `reviewer_request_status` and `reviewer_request_error`.
 
 ## Phase 3 Generated API Coverage
 
@@ -229,6 +299,28 @@ Preview a merge without mutating Forgejo:
 
 Merge options are JSON in the `body` field. Supported `method` values are `merge`, `squash`, `rebase`, and `rebase-merge`. Optional fields are `title`, `message`, `delete_branch_after_merge`, `force_merge`, and `head_commit_id`.
 
+Create a pull-request approval record:
+
+```json
+{
+  "operation": "create_approval",
+  "requested_operation": "create_pull_request",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
+  "body": "{\"head\":\"feature-branch\",\"base\":\"main\",\"title\":\"Add feature\"}"
+}
+```
+
+Use the returned `approval_id` with the exact same PR payload:
+
+```json
+{
+  "operation": "create_pull_request",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
+  "body": "{\"head\":\"feature-branch\",\"base\":\"main\",\"title\":\"Add feature\"}",
+  "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
+}
+```
+
 Create a release approval record:
 
 ```json
@@ -284,6 +376,7 @@ export ACCESS_JWT="$(get-agent-token)"
 forgejo-mcpctl repository-issues forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 forgejo-mcpctl issue-comment forgejo://issue/GetOpir/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
 forgejo-mcpctl pull-requests GetOpir/forgejo-keycloak-rust-mcp --state open
+forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp --head feature-branch --base main --title "Add feature" --dry-run
 forgejo-mcpctl notifications --state unread --limit 25
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
 forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25

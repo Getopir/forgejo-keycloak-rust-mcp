@@ -2,7 +2,7 @@
 
 This page tracks completed hardening work and remaining improvements after the
 stable `1.0` line. Items marked complete are implemented or documented in the
-repository as of `1.0.2`.
+repository as of `1.1.0`.
 
 ## Open Source Publication
 
@@ -38,7 +38,10 @@ repository as of `1.0.2`.
 | --- | --- | --- |
 | Add read-only Forgejo repository metadata tools after policy and identity checks. | Complete | `list_repository_metadata` is shipped with principal mapping and Forgejo ACL enforcement. |
 | Add issue and pull-request tools with explicit operation classes and audit records. | Complete | Bounded issue, pull-request, review, release, notification, and comment tools are shipped and documented. |
-| Add write operations only after approval flow, idempotency, and rollback behavior are specified. | Complete for current high-risk writes | `merge_pull_request` and `create_release` require exact-payload, single-use approval records and support dry-run preview. New write classes still need separate review before exposure. |
+| Add write operations only after approval flow, idempotency, and rollback behavior are specified. | Complete for current high-risk writes | `create_pull_request`, `merge_pull_request`, and `create_release` require exact-payload, single-use approval records and support dry-run preview. New write classes still need separate review before exposure. |
+| Add branch-to-PR bootstrap so agents can create a PR after pushing a branch. | Complete | `create_pull_request` accepts `owner/repo`, `head`, `base`, `title`, optional body, assignee, assignees, and reviewers. Reviewer requests are reported separately after PR creation. |
+| Add operation discovery so agents do not need source inspection to know supported tools. | Complete | `GET /capabilities` lists operation names, scopes, risk classes, approval requirements, and planned disabled operations. |
+| Add full PR workflow readbacks for branch status and checks. | Remaining | `update_pull_request`, standalone `request_reviewers`, `get_branch_status`, `get_required_checks`, and `get_pr_checks` remain planned disabled operations. |
 | Add policy controls for destructive operations such as delete, force push, and repository transfer. | Complete as deny-by-default classification | Destructive and admin operations are classified and approval-required, but executable destructive tools remain intentionally disabled. |
 | Add per-agent rate limiting and replay protection for sensitive MCP calls. | Partly complete | Approval replay protection is implemented. Per-agent rate limiting is still remaining. |
 

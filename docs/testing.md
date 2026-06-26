@@ -22,6 +22,7 @@ Smoke checks:
 ```sh
 curl -sS http://127.0.0.1:7080/health
 curl -sS http://127.0.0.1:7080/.well-known/oauth-protected-resource
+curl -sS http://127.0.0.1:7080/capabilities
 ```
 
 Unauthenticated `/mcp` requests should return `401`:
@@ -39,6 +40,7 @@ With a valid token, test these operation decisions:
 | --- | --- | --- |
 | `gateway_probe` | `forgejo:repo:read` | `200 allowed=true` |
 | `gateway_probe` | no `forgejo:repo:read` | `403 allowed=false` |
+| `create_pull_request` | `forgejo:pr:write` | `200 allowed=true approval_required=true` |
 | `merge_pull_request` | `forgejo:pr:merge` | `200 allowed=true approval_required=true` |
 | `delete_repository` | `forgejo:org:admin` | `200 allowed=true approval_required=true` |
 | `unknown_operation` | any | `400` |
@@ -50,7 +52,7 @@ Before cutting `0.4.0`, the gateway was tested with two Keycloak service-account
 The full-scope agent carried:
 
 ```text
-forgejo:repo:read forgejo:issue:write forgejo:pr:merge forgejo:org:admin
+forgejo:repo:read forgejo:issue:write forgejo:pr:write forgejo:pr:merge forgejo:org:admin
 ```
 
 The read-only agent carried:

@@ -158,6 +158,13 @@ impl OperationRegistry {
                 description: "List bounded pull-request summaries through mapped Forgejo identity.",
             },
             Operation {
+                name: "create_pull_request",
+                scope: "forgejo:pr:write",
+                risk: RiskClass::WriteMutating,
+                approval_required: true,
+                description: "Create a pull request and optional review requests after exact-payload approval.",
+            },
+            Operation {
                 name: "list_pull_request_reviews",
                 scope: "forgejo:pr:read",
                 risk: RiskClass::ReadPrivate,
@@ -511,6 +518,7 @@ fn semantic_operation(method: &str, path: &str) -> Option<&'static str> {
         ("GET", "/repos/{owner}/{repo}/issues") => Some("list_repository_issues"),
         ("POST", "/repos/{owner}/{repo}/issues/{index}/comments") => Some("create_issue_comment"),
         ("GET", "/repos/{owner}/{repo}/pulls") => Some("list_pull_requests"),
+        ("POST", "/repos/{owner}/{repo}/pulls") => Some("create_pull_request"),
         ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews") => Some("list_pull_request_reviews"),
         ("GET", "/repos/{owner}/{repo}/releases") => Some("list_releases"),
         ("POST", "/repos/{owner}/{repo}/releases") => Some("create_release"),
@@ -594,7 +602,7 @@ mod tests {
             .iter()
             .filter(|endpoint| endpoint.exposure == EndpointExposure::SemanticOverlay)
             .count();
-        assert_eq!(semantic, 9);
+        assert_eq!(semantic, 10);
         assert!(
             catalog
                 .endpoints

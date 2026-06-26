@@ -148,6 +148,32 @@ pub struct PullRequestSummary {
     pub updated_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CreatePullRequestOptions {
+    pub head: String,
+    pub base: String,
+    pub title: String,
+    #[serde(default)]
+    pub body: Option<String>,
+    #[serde(default)]
+    pub draft: Option<bool>,
+    #[serde(default)]
+    pub assignee: Option<String>,
+    #[serde(default)]
+    pub assignees: Vec<String>,
+    #[serde(default)]
+    pub reviewers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreatePullRequestResult {
+    pub resource_uri: String,
+    pub pull_request: PullRequestSummary,
+    pub requested_reviewers: Vec<String>,
+    pub reviewer_request_status: Option<u16>,
+    pub reviewer_request_error: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoPullRequestReview {
     id: i64,
@@ -304,6 +330,10 @@ pub enum ForgejoError {
     InvalidReleaseOptions,
     #[error("release tag_name is required")]
     MissingReleaseTag,
+    #[error("pull request options body must be JSON when supplied")]
+    InvalidPullRequestOptions,
+    #[error("pull request head, base, and title are required")]
+    MissingPullRequestFields,
     #[error("merge options body must be JSON when supplied")]
     InvalidMergeOptions,
     #[error("unsupported merge method")]
@@ -451,6 +481,68 @@ impl ForgejoClient {
                 page,
             ),
             status,
+        ))
+    }
+
+    pub async fn create_pull_request(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &CreatePullRequestOptions,
+    ) -> Result<(CreatePullRequestResult, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls",
+            self.base_url, target.owner, target.repo
+        );
+        let response = self
+            .http
+            .post(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&options.to_forgejo_payload())
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let pull = response
+            .json::<ForgejoPullRequest>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let pull = PullRequestSummary::from_pull_request(pull, target);
+        let mut reviewer_request_status = None;
+        let mut reviewer_request_error = None;
+        if !options.reviewers.is_empty() {
+            let review_url = format!(
+                "{}/api/v1/repos/{}/{}/pulls/{}/requested_reviewers",
+                self.base_url, target.owner, target.repo, pull.number
+            );
+            let review_response = self
+                .http
+                .post(review_url)
+                .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+                .json(&serde_json::json!({ "reviewers": &options.reviewers }))
+                .send()
+                .await
+                .map_err(|err| ForgejoError::Request(err.to_string()))?;
+            let review_status = review_response.status();
+            reviewer_request_status = Some(review_status.as_u16());
+            if !review_status.is_success() {
+                reviewer_request_error = Some(review_response.text().await.unwrap_or_default());
+            }
+        }
+        Ok((
+            CreatePullRequestResult {
+                resource_uri: pull.resource_uri.clone(),
+                pull_request: pull,
+                requested_reviewers: options.reviewers.clone(),
+                reviewer_request_status,
+                reviewer_request_error,
+            },
+            status.as_u16(),
         ))
     }
 
@@ -686,6 +778,60 @@ impl CreateReleaseOptions {
         }
         if let Some(hide_archive_links) = self.hide_archive_links {
             value["hide_archive_links"] = serde_json::json!(hide_archive_links);
+        }
+        value
+    }
+}
+
+impl CreatePullRequestOptions {
+    pub fn from_body(body: Option<&str>) -> Result<Self, ForgejoError> {
+        let Some(body) = body.map(str::trim).filter(|body| !body.is_empty()) else {
+            return Err(ForgejoError::MissingPullRequestFields);
+        };
+        let options: Self =
+            serde_json::from_str(body).map_err(|_| ForgejoError::InvalidPullRequestOptions)?;
+        options.validate()?;
+        Ok(options)
+    }
+
+    fn validate(&self) -> Result<(), ForgejoError> {
+        if self.head.trim().is_empty()
+            || self.base.trim().is_empty()
+            || self.title.trim().is_empty()
+        {
+            return Err(ForgejoError::MissingPullRequestFields);
+        }
+        Ok(())
+    }
+
+    fn to_forgejo_payload(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "head": self.head.trim(),
+            "base": self.base.trim(),
+            "title": self.title.trim(),
+        });
+        if let Some(body) = &self.body {
+            value["body"] = serde_json::json!(body);
+        }
+        if let Some(draft) = self.draft {
+            value["draft"] = serde_json::json!(draft);
+        }
+        if let Some(assignee) = self
+            .assignee
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["assignee"] = serde_json::json!(assignee);
+        }
+        let assignees = self
+            .assignees
+            .iter()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>();
+        if !assignees.is_empty() {
+            value["assignees"] = serde_json::json!(assignees);
         }
         value
     }
@@ -1085,6 +1231,33 @@ mod tests {
     }
 
     #[test]
+    fn parses_create_pull_request_options_from_json_body() {
+        let options = CreatePullRequestOptions::from_body(Some(
+            r#"{"head":"feature","base":"main","title":"Add feature","body":"details","assignees":["alice"],"reviewers":["bob"],"draft":true}"#,
+        ))
+        .unwrap();
+        assert_eq!(options.head, "feature");
+        assert_eq!(options.base, "main");
+        assert_eq!(options.title, "Add feature");
+        assert_eq!(options.reviewers, vec!["bob"]);
+
+        let payload = options.to_forgejo_payload();
+        assert_eq!(payload["head"], "feature");
+        assert_eq!(payload["base"], "main");
+        assert_eq!(payload["title"], "Add feature");
+        assert_eq!(payload["draft"], true);
+        assert_eq!(payload["assignees"][0], "alice");
+        assert!(payload.get("reviewers").is_none());
+
+        assert!(CreatePullRequestOptions::from_body(Some("not json")).is_err());
+        assert!(
+            CreatePullRequestOptions::from_body(Some(r#"{"head":"feature","base":"main"}"#))
+                .is_err()
+        );
+        assert!(CreatePullRequestOptions::from_body(None).is_err());
+    }
+
+    #[test]
     fn maps_forgejo_repository_json_to_bounded_metadata() {
         let repository: ForgejoRepository = serde_json::from_value(serde_json::json!({
             "full_name": "rawholding/example",
@@ -1110,6 +1283,6 @@ mod tests {
             "forgejo://repository/rawholding/example"
         );
         assert_eq!(metadata.full_name, "rawholding/example");
-        assert_eq!(metadata.permissions.unwrap().pull, true);
+        assert!(metadata.permissions.unwrap().pull);
     }
 }

@@ -9,9 +9,9 @@ retained as design history and as a map from planned phases to shipped features.
 | --- | --- | --- |
 | Phase 0 identity and policy probe | Complete | Keycloak JWT validation, OAuth protected-resource metadata, `/mcp` policy probe, and audit schema are shipped. |
 | Phase 1 Forgejo identity bridge | Complete | Principal mapping, trusted-header spoof rejection, trusted-header derivation, and read-only repository metadata are shipped. |
-| Phase 2 curated Forgejo tools | Complete | Bounded issue, pull-request, review, release, notification, comment, approval, merge, and release-create tools are shipped. |
+| Phase 2 curated Forgejo tools | Complete | Bounded issue, pull-request, review, release, notification, comment, approval, PR-create, merge, and release-create tools are shipped. |
 | Phase 3 generated API classification | Complete | The Forgejo Swagger document is pinned, 491 operations are classified, and bounded coverage metadata is exposed. |
-| Phase 3 generated endpoint execution | Not complete by design | Unreviewed generated endpoints remain metadata-only and disabled until each endpoint has reviewed schemas, scopes, output limits, and approval policy. |
+| Phase 3 generated endpoint execution | Not complete by design | Unreviewed generated endpoints remain metadata-only and disabled until each endpoint has reviewed schemas, scopes, output limits, and approval policy. `/capabilities` exposes reviewed operations and planned disabled operations for discovery. |
 | Admin and destructive operations | Not complete by design | Admin execution, repository deletion, destructive release operations, deploy-key/webhook/secret mutation, and similar high-risk paths remain disabled. |
 
 In short: the original product baseline is shipped. The remaining roadmap is
@@ -114,7 +114,7 @@ Implemented acceptance criteria:
 
 ## Phase 2
 
-Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, `0.8.0` hardens approval gates with file-backed exact-payload approval records, `0.9.0` adds single-use approval-backed pull-request merge, and `0.10.0` adds single-use approval-backed release creation. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
+Phase 2 adds a curated set of agent-safe Forgejo workflows. Version `0.6.0` implements the first bounded baseline, `0.7.0` adds resource URIs plus CLI wrappers, `0.8.0` hardens approval gates with file-backed exact-payload approval records, `0.9.0` adds single-use approval-backed pull-request merge, `0.10.0` adds single-use approval-backed release creation, and `1.1.0` adds approval-backed pull-request creation plus capability discovery. The goal is not full API coverage. The goal is a small, documented set of tools that agents can use reliably without surprising side effects.
 
 ### Curated Issue, Pull Request, Review, Release, And Notification Tools
 
@@ -123,6 +123,7 @@ The `0.6.0` baseline exposes named tools for common work:
 - `list_repository_issues`
 - `create_issue_comment`
 - `list_pull_requests`
+- `create_pull_request` as an approval-gated branch-to-PR bootstrap operation
 - `list_pull_request_reviews`
 - `list_releases`
 - `list_notifications`
@@ -193,7 +194,15 @@ The `0.6.0` approval-gate baseline denies high-risk execution when no approval I
 - The executor must be a different mapped principal from the approver.
 - Approved execution consumes the approval before calling Forgejo so it cannot be replayed.
 - Expired, changed, revoked, consumed, missing, or wrong-principal approvals are denied.
-- `merge_pull_request` and `create_release` are executable after approval and Forgejo ACL checks; admin and destructive execution remain disabled.
+- `create_pull_request`, `merge_pull_request`, and `create_release` are executable after approval and Forgejo ACL checks; admin and destructive execution remain disabled.
+
+Remaining PR workflow expansion is intentionally explicit rather than generic forwarding:
+
+- `update_pull_request`
+- standalone `request_reviewers`
+- `get_branch_status`
+- `get_required_checks`
+- `get_pr_checks`
 
 ## Phase 3
 
@@ -216,13 +225,13 @@ Each endpoint should be classified by:
 
 Generated coverage does not mean unrestricted coverage. In `1.0.0`, only the existing reviewed semantic overlay is executable. All other generated endpoints are metadata-only and disabled until they receive a reviewed semantic operation, scope, risk class, output limit, and approval policy.
 
-`1.0.0` generated coverage:
+`1.1.0` generated coverage:
 
 - Pinned spec: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`.
 - Spec SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`.
 - Total operations: 491.
-- Semantic-overlay operations: 9.
-- Disabled metadata-only operations: 482.
+- Semantic-overlay operations: 10.
+- Disabled metadata-only operations: 481.
 - Coverage report: `docs/generated/forgejo-api-coverage.md`.
 
 Expected safeguards:

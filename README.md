@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.0.2` means:
+Version `1.1.0` means:
 
 - `1`: first stable public release line.
-- `0`: minor feature series.
-- `2`: second stable packaging patch release.
+- `1`: first post-stable feature series.
+- `0`: initial fix release in this feature series.
 
 The governing rule is:
 
@@ -22,13 +22,14 @@ This project does not copy or translate GPL implementation code from other Forge
 - Shipped: principal mapping with duplicate-map validation, token-env validation, and trusted-header spoof rejection.
 - Shipped: curated bounded Forgejo tools, typed resource URIs, and CLI wrappers for common agent/operator calls.
 - Shipped: file-backed approval gates with exact payload and principal binding.
-- Shipped: single-use approval-backed pull-request merges and release creation with dry-run preview.
+- Shipped: single-use approval-backed pull-request creation, pull-request merges, and release creation with dry-run preview.
+- Shipped: unauthenticated capability discovery for agents and operators.
 - Shipped: generated Forgejo API classification coverage pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
-- Remaining: generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
+- Remaining: standalone PR update, standalone reviewer-request, branch status, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
 
 ## Current Scope
 
-`1.0.2` is the crates.io publication metadata release of the hardened Forgejo Keycloak MCP gateway:
+`1.1.0` is the PR workflow and discovery release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -41,6 +42,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
 - Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
+- Creates pull requests through the mapped Forgejo principal after exact-payload approval, with optional assignee and reviewer request inputs.
 - Enforces server-capped `limit` and page-token `cursor` handling for list operations.
 - Returns stable `forgejo://...` resource URIs in repository, issue, pull-request, review, release, notification, and comment summaries.
 - Adds `forgejo-mcpctl` as a token-env based CLI wrapper for curated MCP calls.
@@ -50,6 +52,8 @@ This project does not copy or translate GPL implementation code from other Forge
 - Requires approver and executor to be different mapped principals.
 - Executes `merge_pull_request` only after a valid approval and Forgejo ACL check.
 - Executes `create_release` only after a valid approval and Forgejo ACL check.
+- Executes `create_pull_request` only after a valid approval and Forgejo ACL check.
+- Exposes `GET /capabilities` for operation names, scopes, risk classes, approval requirements, and planned-but-disabled PR workflow operations.
 - Provides dry-run merge previews that do not mutate Forgejo.
 - Provides dry-run release previews that do not mutate Forgejo.
 - Pins the live Forgejo `15.0.3+gitea-1.22.0` Swagger document under `vendor/forgejo-api`.
@@ -58,7 +62,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Adds `forgejo-mcpctl api-coverage` for operator and agent readback.
 - Keeps every non-reviewed generated endpoint disabled until a semantic overlay is reviewed.
 
-High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request merge and release creation are the first approval-backed high-risk execution paths.
+High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request creation, pull-request merge, and release creation are the reviewed approval-backed high-risk execution paths.
 
 ## Install
 
@@ -111,6 +115,7 @@ forgejo-keycloak-rust-mcpd
 - `GET /health`
 - `GET /.well-known/oauth-protected-resource`
 - `GET /.well-known/oauth-protected-resource/mcp`
+- `GET /capabilities`
 - `POST /mcp`
 
 `POST /mcp` requires `Authorization: Bearer <keycloak access token>`.
@@ -142,6 +147,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.1.0](docs/release-notes/1.1.0.md)
 - [Release Notes 1.0.2](docs/release-notes/1.0.2.md)
 - [Release Notes 1.0.1](docs/release-notes/1.0.1.md)
 - [Release Notes 1.0.0](docs/release-notes/1.0.0.md)

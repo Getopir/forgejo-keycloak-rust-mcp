@@ -10,8 +10,8 @@ use axum::routing::{get, post};
 use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
-    CreateReleaseOptions, ForgejoClient, ForgejoError, MergePullRequestOptions, NumberedTarget,
-    PageRequest, RepositoryMetadata, RepositoryTarget,
+    CreatePullRequestOptions, CreateReleaseOptions, ForgejoClient, ForgejoError,
+    MergePullRequestOptions, NumberedTarget, PageRequest, RepositoryMetadata, RepositoryTarget,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
@@ -93,6 +93,21 @@ struct ProtectedResourceMetadata {
     bearer_methods_supported: Vec<&'static str>,
     scopes_supported: Vec<&'static str>,
     resource_signing_alg_values_supported: Vec<&'static str>,
+}
+
+#[derive(Debug, Serialize)]
+struct Capabilities {
+    operations: Vec<policy::Operation>,
+    disabled_but_planned: Vec<PlannedOperation>,
+}
+
+#[derive(Debug, Serialize)]
+struct PlannedOperation {
+    name: &'static str,
+    scope: &'static str,
+    risk: &'static str,
+    approval_required: bool,
+    reason: &'static str,
 }
 
 #[derive(Debug, Deserialize)]
@@ -201,6 +216,7 @@ async fn main() -> anyhow::Result<()> {
             "/.well-known/oauth-protected-resource/mcp",
             get(protected_resource),
         )
+        .route("/capabilities", get(capabilities))
         .route("/mcp", post(mcp_handler))
         .with_state(state);
 
@@ -231,6 +247,49 @@ async fn protected_resource(State(state): State<AppState>) -> Json<ProtectedReso
         bearer_methods_supported: vec!["header"],
         scopes_supported: scopes,
         resource_signing_alg_values_supported: vec!["RS256"],
+    })
+}
+
+async fn capabilities(State(state): State<AppState>) -> Json<Capabilities> {
+    Json(Capabilities {
+        operations: state.registry.operations().cloned().collect(),
+        disabled_but_planned: vec![
+            PlannedOperation {
+                name: "update_pull_request",
+                scope: "forgejo:pr:write",
+                risk: "write_mutating",
+                approval_required: true,
+                reason: "planned PR lifecycle operation; not reviewed as an executable semantic overlay yet",
+            },
+            PlannedOperation {
+                name: "request_reviewers",
+                scope: "forgejo:pr:write",
+                risk: "write_mutating",
+                approval_required: true,
+                reason: "reviewer requests are currently available only inside create_pull_request",
+            },
+            PlannedOperation {
+                name: "get_branch_status",
+                scope: "forgejo:repo:read",
+                risk: "read_private",
+                approval_required: false,
+                reason: "planned read operation for branch-to-PR automation",
+            },
+            PlannedOperation {
+                name: "get_required_checks",
+                scope: "forgejo:repo:read",
+                risk: "read_private",
+                approval_required: false,
+                reason: "planned read operation for merge readiness",
+            },
+            PlannedOperation {
+                name: "get_pr_checks",
+                scope: "forgejo:pr:read",
+                risk: "read_private",
+                approval_required: false,
+                reason: "planned read operation for PR readiness",
+            },
+        ],
     })
 }
 
@@ -296,6 +355,10 @@ async fn mcp_handler(
         match body.operation.as_str() {
             "create_release" => {
                 return create_release_response(request_id, state, principal, body, decision).await;
+            }
+            "create_pull_request" => {
+                return create_pull_request_response(request_id, state, principal, body, decision)
+                    .await;
             }
             "merge_pull_request" => {
                 return merge_pull_request_response(request_id, state, principal, body, decision)
@@ -394,6 +457,185 @@ async fn mcp_handler(
             target: body.target,
             repository: None,
             result: None,
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn create_pull_request_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_repository_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let options = match CreatePullRequestOptions::from_body(body.body.as_deref()) {
+        Ok(options) => options,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    if body.dry_run {
+        return create_pull_request_preview_response(
+            request_id, state, principal, body, decision, target, options,
+        );
+    }
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let Some(store) = state.approval_store.as_ref() else {
+        audit_decision(
+            request_id,
+            &principal,
+            Some(&access.mapping),
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            request_id,
+            &ApprovalError::NotConfigured.to_string(),
+        );
+    };
+    audit_decision(
+        request_id,
+        &principal,
+        Some(&access.mapping),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    let approval = match store.consume(&body, &principal, &access.mapping) {
+        Ok(approval) => approval,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(StatusCode::FORBIDDEN, request_id, &err.to_string());
+        }
+    };
+    let (pull_request_result, forgejo_status) = match access
+        .forgejo
+        .create_pull_request(&access.token, &target, &options)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return forgejo_error_response(request_id, "Forgejo pull-request creation failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "approval consumed and pull request created by Forgejo".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "approval": approval,
+                "pull_request": pull_request_result,
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn create_pull_request_preview_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+    target: RepositoryTarget,
+    options: CreatePullRequestOptions,
+) -> axum::response::Response {
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    audit_decision(
+        request_id,
+        &principal,
+        mapping.as_ref(),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: mapping
+                .as_ref()
+                .map(|mapping| mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.as_ref().and_then(|mapping| mapping.forgejo_user_id),
+            trusted_delegation_headers: mapping
+                .as_ref()
+                .map(|mapping| state.trusted_headers.delegated_headers(mapping))
+                .unwrap_or_default(),
+            operation: body.operation,
+            allowed: true,
+            reason: "dry-run preview only; no Forgejo mutation executed".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "dry_run": true,
+                "would_execute": false,
+                "operation": "create_pull_request",
+                "resource_uri": target.resource_uri(),
+                "pull_request_options": options,
+                "approval_required": true,
+                "approval_store_configured": state.approval_store.is_some(),
+            })),
             limit: None,
             next_cursor: None,
         }),
@@ -1313,6 +1555,7 @@ fn create_approval_response(
         .into_response()
 }
 
+#[allow(clippy::result_large_err)]
 fn principal_mapping(
     state: &AppState,
     principal: &identity::Principal,
@@ -1331,6 +1574,7 @@ fn principal_mapping(
         .map_err(|err| error_response(StatusCode::FORBIDDEN, request_id, &err.to_string()))
 }
 
+#[allow(clippy::result_large_err)]
 fn forgejo_access(
     state: &AppState,
     principal: &identity::Principal,
@@ -1368,6 +1612,7 @@ fn forgejo_access(
     })
 }
 
+#[allow(clippy::result_large_err)]
 fn parse_repository_target(
     body: &McpProbeRequest,
     request_id: Uuid,
@@ -1383,6 +1628,7 @@ fn parse_repository_target(
         .map_err(|err| error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()))
 }
 
+#[allow(clippy::result_large_err)]
 fn parse_numbered_target(
     body: &McpProbeRequest,
     request_id: Uuid,

@@ -27,6 +27,7 @@ enum Command {
     RepositoryIssues(ListTargetArgs),
     IssueComment(CommentArgs),
     PullRequests(ListTargetArgs),
+    CreatePullRequest(CreatePullRequestArgs),
     PullReviews(NumberedListArgs),
     Releases(ListTargetArgs),
     ApiCoverage(ApiCoverageArgs),
@@ -115,6 +116,68 @@ struct MergePullRequestArgs {
     message: Option<String>,
     #[arg(long)]
     delete_branch_after_merge: bool,
+}
+
+#[derive(Debug, Parser)]
+struct CreatePullRequestArgs {
+    target: String,
+    #[arg(long)]
+    head: String,
+    #[arg(long)]
+    base: String,
+    #[arg(long)]
+    title: String,
+    #[arg(long)]
+    body: Option<String>,
+    #[arg(long)]
+    approval_id: Option<String>,
+    #[arg(long)]
+    dry_run: bool,
+    #[arg(long)]
+    draft: bool,
+    #[arg(long)]
+    assignee: Option<String>,
+    #[arg(long)]
+    assignee_user: Vec<String>,
+    #[arg(long)]
+    reviewer: Vec<String>,
+}
+
+impl CreatePullRequestArgs {
+    fn into_request(self) -> McpRequest {
+        let mut body = serde_json::json!({
+            "head": self.head,
+            "base": self.base,
+            "title": self.title,
+        });
+        if let Some(value) = self.body {
+            body["body"] = serde_json::json!(value);
+        }
+        if self.draft {
+            body["draft"] = serde_json::json!(true);
+        }
+        if let Some(value) = self.assignee {
+            body["assignee"] = serde_json::json!(value);
+        }
+        if !self.assignee_user.is_empty() {
+            body["assignees"] = serde_json::json!(self.assignee_user);
+        }
+        if !self.reviewer.is_empty() {
+            body["reviewers"] = serde_json::json!(self.reviewer);
+        }
+        McpRequest {
+            operation: "create_pull_request",
+            requested_operation: None,
+            target: Some(self.target),
+            query: None,
+            limit: None,
+            cursor: None,
+            state: None,
+            body: Some(body.to_string()),
+            approval_id: self.approval_id,
+            dry_run: self.dry_run,
+        }
+    }
 }
 
 #[derive(Debug, Parser)]
@@ -225,6 +288,7 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::CreatePullRequest(args) => args.into_request(),
             Command::PullReviews(args) => list_request(
                 "list_pull_request_reviews",
                 Some(args.target),

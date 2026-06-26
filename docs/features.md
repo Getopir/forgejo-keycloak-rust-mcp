@@ -1,12 +1,13 @@
 # Features
 
-`1.0.2` is the crates.io publication metadata release of the Forgejo Keycloak Rust MCP gateway.
+`1.1.0` is the PR workflow and discovery release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
 - Validates Keycloak bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Publishes OAuth protected-resource metadata for MCP clients.
 - Uses an explicit policy registry for every exposed MCP operation.
+- Exposes unauthenticated `/capabilities` metadata for operation discovery.
 - Records audit events without bearer tokens or downstream service credentials.
 - Rejects caller-supplied trusted identity headers.
 
@@ -24,6 +25,7 @@
 - `list_repository_issues`
 - `create_issue_comment`
 - `list_pull_requests`
+- `create_pull_request`
 - `list_pull_request_reviews`
 - `list_releases`
 - `list_notifications`
@@ -44,13 +46,13 @@ High-risk operations use file-backed, single-use approval records:
 - executor and approver must be different mapped principals;
 - approvals are consumed before Forgejo mutation calls.
 
-`merge_pull_request` and `create_release` are executable after approval and Forgejo ACL checks. Destructive and admin execution remains disabled.
+`create_pull_request`, `merge_pull_request`, and `create_release` are executable after approval and Forgejo ACL checks. Destructive and admin execution remains disabled.
 
 ## Generated API Coverage
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and classifies all 491 operations by target type, risk, approval requirement, and exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.0.2`, 9 operations are exposed through the semantic overlay and 482 remain disabled.
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.1.0`, 10 operations are exposed through the semantic overlay and 481 remain disabled.
 
 ## CLI
 
@@ -62,5 +64,6 @@ Examples:
 forgejo-mcpctl repository-metadata GetOpir/forgejo-keycloak-rust-mcp
 forgejo-mcpctl repository-issues GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
+forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp --head feature-branch --base main --title "Add feature" --dry-run
 forgejo-mcpctl merge-pull-request GetOpir/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
 ```

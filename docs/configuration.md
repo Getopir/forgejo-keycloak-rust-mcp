@@ -20,6 +20,13 @@
 
 ## Keycloak Setup
 
+Use operator-reachable, agent-reachable URLs for both `FORGEJO_MCPD_ISSUER` and `FORGEJO_MCPD_RESOURCE`. A container-only issuer such as `http://keycloak:8080/realms/master` is valid only when every caller and the gateway can resolve that hostname the same way. Prefer one canonical LAN DNS name or HTTPS URL shared by:
+
+- Keycloak issuer and discovery metadata.
+- MCP protected-resource metadata.
+- OPIR-P project inputs and work-order context.
+- Agent setup docs and shell examples.
+
 Create a dedicated client or audience for the gateway. The access token presented to `/mcp` must contain:
 
 - `iss`: the configured issuer.
@@ -34,6 +41,7 @@ For the current release, useful scopes are:
 - `forgejo:issue:read`
 - `forgejo:issue:write`
 - `forgejo:pr:read`
+- `forgejo:pr:write`
 - `forgejo:pr:merge`
 - `forgejo:release:read`
 - `forgejo:release:write`
@@ -72,6 +80,19 @@ export FORGEJO_AGENT_READER_TOKEN=...
 ```
 
 Unknown or disabled mappings are denied before any Forgejo call.
+
+## Agent Token Acquisition
+
+Agents should obtain short-lived Keycloak access tokens for the MCP audience. Do not give agents long-lived Forgejo personal access tokens as their MCP login.
+
+Recommended deployment pattern:
+
+- OPIR-P or another trusted control plane authenticates the agent/work order.
+- A token broker exchanges that authorization for a short-lived Keycloak access token whose `aud` is the MCP resource and whose scopes match the assigned work.
+- The agent places the token in memory, for example `ACCESS_JWT`, and calls `/mcp`.
+- The gateway maps the Keycloak subject to the Forgejo principal and reads any downstream Forgejo token only from the server runtime environment.
+
+For local operator testing, `forgejo-mcpctl` reads the bearer token from an environment variable named by `FORGEJO_MCPCTL_TOKEN_ENV`, defaulting to `ACCESS_JWT`. The repository intentionally does not document a committed client secret or a universal `get-agent-token` command, because token issuance is deployment-specific.
 
 The gateway validates the mapping file at startup:
 

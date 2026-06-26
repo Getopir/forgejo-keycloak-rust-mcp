@@ -22,6 +22,7 @@ SEMANTIC_OVERLAY = {
     ("GET", "/repos/{owner}/{repo}/issues"): "list_repository_issues",
     ("POST", "/repos/{owner}/{repo}/issues/{index}/comments"): "create_issue_comment",
     ("GET", "/repos/{owner}/{repo}/pulls"): "list_pull_requests",
+    ("POST", "/repos/{owner}/{repo}/pulls"): "create_pull_request",
     ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews"): "list_pull_request_reviews",
     ("GET", "/repos/{owner}/{repo}/releases"): "list_releases",
     ("POST", "/repos/{owner}/{repo}/releases"): "create_release",
