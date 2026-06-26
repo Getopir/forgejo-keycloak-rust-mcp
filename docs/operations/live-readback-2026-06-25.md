@@ -62,7 +62,7 @@ Readbacks:
 - Hosted Forgejo wiki head: `ea84d651a8ea832093726a96a16e6597928de50e`.
 - Hosted Codeberg wiki head: `c0203bcce69652557a861095494d7eac849a52aa`.
 
-Authenticated MCP readback:
+Authenticated MCP readback before canonical issuer migration:
 
 - Keycloak client `forgejo-mcp-live-agent` issues a service-account token with issuer `http://keycloak:8080/realms/master`, audience `mcp-server`, and scope `forgejo:repo:read`.
 - The gateway principal map binds that Keycloak subject to Forgejo account `kentthoresen`; the map stores an environment-variable name only, not the Forgejo token value.
@@ -96,8 +96,25 @@ Follow-up PR auth readback on 2026-06-26:
 - Full mutating PR creation still needs a second mapped principal because the
   approval system rejects same-principal approval and execution.
 
+Canonical issuer migration on 2026-06-26:
+
+- Keycloak CT `102` now emits `http://keycloak.lan:8080/realms/master` for the
+  master realm.
+- OpenBao CT `107` `auth/keycloak` now trusts
+  `http://keycloak.lan:8080/realms/neutrino-agents`.
+- The Rust gateway environment and principal map now use
+  `http://keycloak.lan:8080/realms/master`.
+- VM166's OpenBao handle for `forgejo-keycloak-rust-mcp` now uses the
+  `keycloak.lan` token endpoint.
+- VM166 verified the full agent path after migration:
+  Keycloak -> OpenBao -> MCP handle -> short-lived MCP token -> live
+  `create_pull_request` dry-run returned `200`, `allowed=true`, and
+  `approval_required=true`.
+- Protected-resource metadata now advertises authorization server
+  `http://keycloak.lan:8080/realms/master`.
+
 Notes:
 
 - The older Go `forgejo-mcp.service` was stopped and disabled because it exposed a Forgejo token in the process command line. Port `8090` is no longer listening.
-- The Rust gateway now uses the live Keycloak issuer from discovery: `http://keycloak:8080/realms/master`.
+- The Rust gateway now uses the canonical LAN Keycloak issuer from discovery: `http://keycloak.lan:8080/realms/master`.
 - Forgejo-backed read access was tested with the mapped Keycloak service account. Additional write, merge, and release tests require separate scoped Keycloak clients and explicit approval records.
