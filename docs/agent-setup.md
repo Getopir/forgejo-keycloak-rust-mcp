@@ -41,7 +41,7 @@ The gateway does not require agents to know Forgejo personal access tokens. Down
 ## Probe Example
 
 ```sh
-ACCESS_JWT="$(get-agent-token)"
+ACCESS_JWT="<keycloak-access-token-from-your-token-broker>"
 
 curl -sS \
   -H "Authorization: Bearer ${ACCESS_JWT}" \

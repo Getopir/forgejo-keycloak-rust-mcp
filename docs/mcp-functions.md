@@ -371,7 +371,7 @@ Example:
 ```sh
 export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
 export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
-export ACCESS_JWT="$(get-agent-token)"
+export ACCESS_JWT="<keycloak-access-token-from-your-token-broker>"
 
 forgejo-mcpctl repository-issues forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 forgejo-mcpctl issue-comment forgejo://issue/GetOpir/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."

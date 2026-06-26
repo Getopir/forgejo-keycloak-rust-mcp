@@ -88,7 +88,7 @@ Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` out of source control.
 ```sh
 export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
 export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
-export ACCESS_JWT="$(get-agent-token)"
+export ACCESS_JWT="<keycloak-access-token-from-your-token-broker>"
 
 forgejo-mcpctl repository-metadata forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp
 forgejo-mcpctl repository-issues GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25

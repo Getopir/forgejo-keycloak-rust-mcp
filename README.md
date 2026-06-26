@@ -125,7 +125,8 @@ Example:
 ```sh
 curl -sS http://127.0.0.1:7080/health
 
-ACCESS_JWT="$(get-agent-token)"
+# Obtain this from your deployment's short-lived Keycloak token broker.
+ACCESS_JWT="<keycloak-access-token-for-the-mcp-audience>"
 
 curl -sS \
   -H "Authorization: Bearer ${ACCESS_JWT}" \
