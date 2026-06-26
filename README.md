@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.0.1` means:
+Version `1.0.2` means:
 
 - `1`: first stable public release line.
 - `0`: minor feature series.
-- `1`: first stable packaging patch release.
+- `2`: second stable packaging patch release.
 
 The governing rule is:
 
@@ -28,7 +28,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.0.1` is the crates.io-ready packaging release of the hardened Forgejo Keycloak MCP gateway:
+`1.0.2` is the crates.io publication metadata release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -142,6 +142,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.0.2](docs/release-notes/1.0.2.md)
 - [Release Notes 1.0.1](docs/release-notes/1.0.1.md)
 - [Release Notes 1.0.0](docs/release-notes/1.0.0.md)
 - [Release Notes 0.10.0](docs/release-notes/0.10.0.md)

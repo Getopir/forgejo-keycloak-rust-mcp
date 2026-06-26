@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.0.1` exposes a hardened, curated, generated-classification, and crates.io-ready MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
+`1.0.2` exposes a hardened, curated, generated-classification, and crates.io-ready MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, and returns bounded generated Forgejo API coverage metadata.
 
 ## HTTP Surface
 

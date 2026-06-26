@@ -1,6 +1,6 @@
 # Features
 
-`1.0.1` is the crates.io-ready packaging release of the Forgejo Keycloak Rust MCP gateway.
+`1.0.2` is the crates.io publication metadata release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -50,7 +50,7 @@ High-risk operations use file-backed, single-use approval records:
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and classifies all 491 operations by target type, risk, approval requirement, and exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.0.1`, 9 operations are exposed through the semantic overlay and 482 remain disabled.
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.0.2`, 9 operations are exposed through the semantic overlay and 482 remain disabled.
 
 ## CLI
 

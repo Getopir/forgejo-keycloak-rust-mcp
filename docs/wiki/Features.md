@@ -1,6 +1,6 @@
 # Features
 
-`1.0.1` is the crates.io-ready packaging release of the Forgejo Keycloak Rust MCP gateway.
+`1.0.2` is the crates.io publication metadata release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -37,7 +37,7 @@
 Approval records are file-backed, short-lived, exact-payload-bound, single-use,
 and require different mapped principals for approval and execution.
 
-Executable high-risk tools in `1.0.1`:
+Executable high-risk tools in `1.0.2`:
 
 - `merge_pull_request`
 - `create_release`
