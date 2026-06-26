@@ -59,8 +59,8 @@ Generated coverage is metadata-only unless an endpoint has a reviewed semantic M
 Examples:
 
 ```sh
-forgejo-mcpctl repository-metadata rawholding/forgejo-keycloak-rust-mcp
-forgejo-mcpctl repository-issues rawholding/forgejo-keycloak-rust-mcp --state open --limit 25
+forgejo-mcpctl repository-metadata GetOpir/forgejo-keycloak-rust-mcp
+forgejo-mcpctl repository-issues GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
-forgejo-mcpctl merge-pull-request rawholding/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
+forgejo-mcpctl merge-pull-request GetOpir/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
 ```

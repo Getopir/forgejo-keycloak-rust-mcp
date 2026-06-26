@@ -42,10 +42,10 @@ List operations accept `limit` and `cursor`. The server caps `limit` with `FORGE
 
 Resource summaries include stable `forgejo://...` resource URIs. Examples:
 
-- `forgejo://repository/rawholding/forgejo-keycloak-rust-mcp`
-- `forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1`
-- `forgejo://pull/rawholding/forgejo-keycloak-rust-mcp/1`
-- `forgejo://release/rawholding/forgejo-keycloak-rust-mcp/v0.10.0`
+- `forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp`
+- `forgejo://issue/GetOpir/forgejo-keycloak-rust-mcp/1`
+- `forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1`
+- `forgejo://release/GetOpir/forgejo-keycloak-rust-mcp/v0.10.0`
 - `forgejo://notification/123`
 
 High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.0.1` release supports approval-backed pull-request merge, approval-backed release creation, generated API classification coverage, and crates.io-ready packaging while keeping non-reviewed generated endpoints disabled.

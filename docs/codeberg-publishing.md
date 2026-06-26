@@ -1,6 +1,6 @@
 # Codeberg Publishing
 
-Target namespace: `https://codeberg.org/rawholding`
+Target namespace: `https://codeberg.org/GetOpir`
 
 Target repository: `forgejo-keycloak-rust-mcp`
 
@@ -14,7 +14,7 @@ Create the repository in Codeberg before pushing. Codeberg does not support crea
 
 Recommended public settings:
 
-- Owner: `rawholding`
+- Owner: `GetOpir`
 - Repository name: `forgejo-keycloak-rust-mcp`
 - Visibility: public
 - Wiki: enabled
@@ -26,7 +26,7 @@ Recommended public settings:
 Add a Codeberg remote:
 
 ```sh
-git remote add codeberg git@codeberg.org:rawholding/forgejo-keycloak-rust-mcp.git
+git remote add codeberg git@codeberg.org:GetOpir/forgejo-keycloak-rust-mcp.git
 ```
 
 Push the main branch and release tags:
@@ -41,7 +41,7 @@ git push codeberg --tags
 The source-controlled wiki lives in `docs/wiki`. Codeberg stores the hosted wiki in a separate Git repository named `forgejo-keycloak-rust-mcp.wiki.git`.
 
 ```sh
-git clone git@codeberg.org:rawholding/forgejo-keycloak-rust-mcp.wiki.git /tmp/forgejo-keycloak-rust-mcp.wiki
+git clone git@codeberg.org:GetOpir/forgejo-keycloak-rust-mcp.wiki.git /tmp/forgejo-keycloak-rust-mcp.wiki
 cp docs/wiki/*.md /tmp/forgejo-keycloak-rust-mcp.wiki/
 cd /tmp/forgejo-keycloak-rust-mcp.wiki
 git add .

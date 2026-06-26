@@ -109,7 +109,7 @@ Example:
 ```json
 {
   "operation": "list_repository_issues",
-  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
   "state": "open",
   "limit": 25,
   "cursor": "2"

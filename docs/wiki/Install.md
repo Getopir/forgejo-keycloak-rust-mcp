@@ -43,5 +43,5 @@ CLI wrapper:
 export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
 export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
 export ACCESS_JWT="$(get-agent-token)"
-forgejo-mcpctl repository-metadata forgejo://repository/rawholding/forgejo-keycloak-rust-mcp
+forgejo-mcpctl repository-metadata forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp
 ```

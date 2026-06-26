@@ -2,7 +2,7 @@
 
 OpenSSF Best Practices Badge site: `https://www.bestpractices.dev/en`
 
-Project URL: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp`
+Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 
 ## Current Evidence
 

@@ -5,7 +5,7 @@
 Hosted Codeberg release object is present for `v1.0.0`.
 
 - API readback: `https://codeberg.org/api/v1/repos/rawholding/forgejo-keycloak-rust-mcp/releases/tags/v1.0.0`
-- HTML URL: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/releases/tag/v1.0.0`
+- HTML URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/releases/tag/v1.0.0`
 - Tag: `v1.0.0`
 - Title: `v1.0.0 - Stable Forgejo Keycloak Rust MCP gateway`
 - Draft: `false`

@@ -43,6 +43,6 @@ This release is useful for validating the identity and policy boundary before Fo
 
 ## Links
 
-- Source: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp`
-- Wiki: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/wiki`
-- Roadmap: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/wiki/Roadmap`
+- Source: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
+- Wiki: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/wiki`
+- Roadmap: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/wiki/Roadmap`

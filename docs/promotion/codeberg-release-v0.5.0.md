@@ -43,6 +43,6 @@ This release adds the first Forgejo-backed read-only capability while keeping mu
 
 ## Links
 
-- Source: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp`
-- Wiki: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/wiki`
-- Roadmap: `https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp/wiki/Roadmap`
+- Source: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
+- Wiki: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/wiki`
+- Roadmap: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/wiki/Roadmap`

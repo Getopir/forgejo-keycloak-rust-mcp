@@ -105,7 +105,7 @@ Example request:
 ```json
 {
   "operation": "list_repository_metadata",
-  "target": "forgejo://repository/rawholding/forgejo-keycloak-rust-mcp"
+  "target": "forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp"
 }
 ```
 
@@ -128,19 +128,19 @@ List tools accept:
 Examples:
 
 ```json
-{"operation":"list_repository_issues","target":"rawholding/forgejo-keycloak-rust-mcp","state":"open","limit":25}
+{"operation":"list_repository_issues","target":"GetOpir/forgejo-keycloak-rust-mcp","state":"open","limit":25}
 ```
 
 ```json
-{"operation":"list_pull_requests","target":"rawholding/forgejo-keycloak-rust-mcp","state":"open","limit":25}
+{"operation":"list_pull_requests","target":"GetOpir/forgejo-keycloak-rust-mcp","state":"open","limit":25}
 ```
 
 ```json
-{"operation":"list_pull_request_reviews","target":"forgejo://pull/rawholding/forgejo-keycloak-rust-mcp/1","limit":25}
+{"operation":"list_pull_request_reviews","target":"forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1","limit":25}
 ```
 
 ```json
-{"operation":"list_releases","target":"rawholding/forgejo-keycloak-rust-mcp","limit":25}
+{"operation":"list_releases","target":"GetOpir/forgejo-keycloak-rust-mcp","limit":25}
 ```
 
 ```json
@@ -150,7 +150,7 @@ Examples:
 ```json
 {
   "operation": "create_issue_comment",
-  "target": "rawholding/forgejo-keycloak-rust-mcp#1",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp#1",
   "body": "Thanks, I verified this with the mapped agent."
 }
 ```
@@ -198,7 +198,7 @@ Create an approval record:
 {
   "operation": "create_approval",
   "requested_operation": "merge_pull_request",
-  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp#12",
   "body": "{\"method\":\"squash\"}"
 }
 ```
@@ -208,7 +208,7 @@ Use the returned `approval_id` with the exact same operation payload:
 ```json
 {
   "operation": "merge_pull_request",
-  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp#12",
   "body": "{\"method\":\"squash\"}",
   "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
 }
@@ -221,7 +221,7 @@ Preview a merge without mutating Forgejo:
 ```json
 {
   "operation": "merge_pull_request",
-  "target": "rawholding/forgejo-keycloak-rust-mcp#12",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp#12",
   "body": "{\"method\":\"squash\"}",
   "dry_run": true
 }
@@ -235,7 +235,7 @@ Create a release approval record:
 {
   "operation": "create_approval",
   "requested_operation": "create_release",
-  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
   "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"body\":\"Release notes\"}"
 }
 ```
@@ -245,7 +245,7 @@ Use the returned `approval_id` with the exact same release payload:
 ```json
 {
   "operation": "create_release",
-  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
   "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"body\":\"Release notes\"}",
   "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a"
 }
@@ -256,7 +256,7 @@ Preview release creation without mutating Forgejo:
 ```json
 {
   "operation": "create_release",
-  "target": "rawholding/forgejo-keycloak-rust-mcp",
+  "target": "GetOpir/forgejo-keycloak-rust-mcp",
   "body": "{\"tag_name\":\"v0.10.0\",\"name\":\"v0.10.0\",\"draft\":true}",
   "dry_run": true
 }
@@ -281,13 +281,13 @@ export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
 export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
 export ACCESS_JWT="$(get-agent-token)"
 
-forgejo-mcpctl repository-issues forgejo://repository/rawholding/forgejo-keycloak-rust-mcp --state open --limit 25
-forgejo-mcpctl issue-comment forgejo://issue/rawholding/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
-forgejo-mcpctl pull-requests rawholding/forgejo-keycloak-rust-mcp --state open
+forgejo-mcpctl repository-issues forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
+forgejo-mcpctl issue-comment forgejo://issue/GetOpir/forgejo-keycloak-rust-mcp/1 --body "Verified by mapped agent."
+forgejo-mcpctl pull-requests GetOpir/forgejo-keycloak-rust-mcp --state open
 forgejo-mcpctl notifications --state unread --limit 25
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
 forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25
-forgejo-mcpctl create-release rawholding/forgejo-keycloak-rust-mcp --tag-name v0.10.0 --name v0.10.0 --dry-run
-forgejo-mcpctl merge-pull-request rawholding/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
-forgejo-mcpctl create-approval merge_pull_request rawholding/forgejo-keycloak-rust-mcp#12 --body '{"method":"squash"}'
+forgejo-mcpctl create-release GetOpir/forgejo-keycloak-rust-mcp --tag-name v0.10.0 --name v0.10.0 --dry-run
+forgejo-mcpctl merge-pull-request GetOpir/forgejo-keycloak-rust-mcp#12 --method squash --dry-run
+forgejo-mcpctl create-approval merge_pull_request GetOpir/forgejo-keycloak-rust-mcp#12 --body '{"method":"squash"}'
 ```

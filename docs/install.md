@@ -18,7 +18,7 @@ forgejo-mcpctl
 ## Build From Source
 
 ```sh
-git clone https://codeberg.org/rawholding/forgejo-keycloak-rust-mcp.git
+git clone https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp.git
 cd forgejo-keycloak-rust-mcp
 cargo test --workspace
 cargo build --release -p forgejo-keycloak-rust-mcp
@@ -90,6 +90,6 @@ export FORGEJO_MCPCTL_GATEWAY=http://127.0.0.1:7080/mcp
 export FORGEJO_MCPCTL_TOKEN_ENV=ACCESS_JWT
 export ACCESS_JWT="$(get-agent-token)"
 
-forgejo-mcpctl repository-metadata forgejo://repository/rawholding/forgejo-keycloak-rust-mcp
-forgejo-mcpctl repository-issues rawholding/forgejo-keycloak-rust-mcp --state open --limit 25
+forgejo-mcpctl repository-metadata forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp
+forgejo-mcpctl repository-issues GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 ```
