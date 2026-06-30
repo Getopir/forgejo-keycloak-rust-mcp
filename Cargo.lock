@@ -296,7 +296,7 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "forgejo-keycloak-mcp-audit"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "forgejo-keycloak-mcp-policy",
  "serde",
@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "forgejo-keycloak-mcp-identity"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "jsonwebtoken",
  "reqwest",
@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "forgejo-keycloak-mcp-policy"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -326,7 +326,7 @@ dependencies = [
 
 [[package]]
 name = "forgejo-keycloak-rust-mcp"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "axum",

@@ -1,11 +1,12 @@
 # Features
 
-`1.1.0` is the PR workflow and discovery release of the Forgejo Keycloak Rust MCP gateway.
+`1.1.2` is the HTTPS setup hardening release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
 - Keycloak bearer-token validation.
 - OAuth protected-resource metadata.
+- `--tls` and `--ssl` setup guards for HTTPS public Forgejo and MCP URLs.
 - Unauthenticated `/capabilities` operation discovery.
 - Explicit operation registry with required scope, risk class, and approval policy.
 - Token-free audit events.

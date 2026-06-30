@@ -31,7 +31,22 @@ The installable binaries are:
 
 ## Publish Order
 
-Publish dependencies before the binary package:
+Publish dependencies before the binary package. The safest path is the helper
+script, which checks registry state, runs validation, publishes in dependency
+order, and waits for each just-published package to appear on crates.io before
+publishing the packages that depend on it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\publish-crates-io.ps1
+powershell -ExecutionPolicy Bypass -File tools\publish-crates-io.ps1 -Execute
+```
+
+The first command is a dry-run. The second command performs the real crates.io
+publication. It requires `cargo login` or `CARGO_REGISTRY_TOKEN`.
+Use `pwsh -File ...` instead when running from PowerShell 7 or non-Windows
+hosts.
+
+The manual equivalent is:
 
 ```sh
 cargo publish -p forgejo-keycloak-mcp-policy
@@ -40,7 +55,7 @@ cargo publish -p forgejo-keycloak-mcp-audit
 cargo publish -p forgejo-keycloak-rust-mcp
 ```
 
-Run dry-runs first:
+Run dry-runs before each publish:
 
 ```sh
 cargo publish --dry-run -p forgejo-keycloak-mcp-policy
@@ -49,16 +64,18 @@ cargo publish --dry-run -p forgejo-keycloak-mcp-audit
 cargo publish --dry-run -p forgejo-keycloak-rust-mcp
 ```
 
-Before the first crates.io publication, the dry-runs for
-`forgejo-keycloak-mcp-audit` and `forgejo-keycloak-rust-mcp` may fail with
-`no matching package named ... found` until their dependency packages have been
-published to crates.io. That is expected for a multi-crate first publication.
-The practical sequence is:
+Before the first crates.io publication, `cargo publish --dry-run` for
+`forgejo-keycloak-mcp-audit` and `forgejo-keycloak-rust-mcp` fails with
+`no matching package named ... found` until their dependency packages are
+visible in the crates.io index. That is expected for a multi-crate first
+publication. The practical sequence is:
 
 1. Dry-run `forgejo-keycloak-mcp-policy` and `forgejo-keycloak-mcp-identity`.
 2. Publish `forgejo-keycloak-mcp-policy` and `forgejo-keycloak-mcp-identity`.
-3. Dry-run and publish `forgejo-keycloak-mcp-audit`.
-4. Dry-run and publish `forgejo-keycloak-rust-mcp`.
+3. Wait until both package versions are visible on crates.io.
+4. Dry-run and publish `forgejo-keycloak-mcp-audit`.
+5. Wait until `forgejo-keycloak-mcp-audit` is visible on crates.io.
+6. Dry-run and publish `forgejo-keycloak-rust-mcp`.
 
 ## Authentication
 
@@ -85,7 +102,9 @@ Before publishing:
 - Confirm the version is bumped in every workspace package.
 - Run `cargo fmt --check`.
 - Run `cargo test --workspace`.
-- Run `cargo publish --dry-run` for all four packages in dependency order.
+- Run `powershell -ExecutionPolicy Bypass -File tools\publish-crates-io.ps1`
+  or run
+  `cargo publish --dry-run` for each package immediately before publishing it.
 - Confirm `README.md`, `docs/install.md`, and `docs/wiki/Install.md` show the
   `cargo install forgejo-keycloak-rust-mcp --locked` path.
 - Confirm no secret values are included in package files.

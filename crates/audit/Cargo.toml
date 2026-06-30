@@ -2,7 +2,7 @@
 
 [package]
 name = "forgejo-keycloak-mcp-audit"
-version = "1.1.0"
+version = "1.1.2"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -10,6 +10,7 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 description = "Token-safe audit event schema for forgejo-keycloak-rust-mcp."
+readme = "README.md"
 keywords.workspace = true
 categories.workspace = true
 
@@ -17,7 +18,7 @@ categories.workspace = true
 name = "audit"
 
 [dependencies]
-policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.1.0" }
+policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.1.2" }
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true

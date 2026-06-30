@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.1.0` means:
+Version `1.1.2` means:
 
 - `1`: first stable public release line.
 - `1`: first post-stable feature series.
-- `0`: initial fix release in this feature series.
+- `1`: HTTPS setup guard and documentation update in this feature series.
 
 The governing rule is:
 
@@ -29,10 +29,11 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.1.0` is the PR workflow and discovery release of the hardened Forgejo Keycloak MCP gateway:
+`1.1.2` is the HTTPS setup hardening release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
+- Adds `--tls` and `--ssl` HTTPS setup guards for deployments where Forgejo or the MCP public route is served over HTTPS.
 - Provides a deterministic operation policy registry.
 - Emits structured audit records without tokens or secret values.
 - Exposes an authenticated `/mcp` policy probe for agents.
@@ -94,9 +95,16 @@ forgejo-keycloak-rust-mcpd \
   --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
   --audience forgejo-mcp \
   --resource https://mcp.example.org/mcp \
+  --tls \
+  --forgejo-url https://forgejo.example.org \
   --approval-store /var/lib/forgejo-mcpd/approvals.jsonl \
   --bind 127.0.0.1:7080
 ```
+
+Warning: if your public Forgejo or MCP route is HTTPS, configure the public URLs
+with `https://` and add `--tls` or `--ssl`. The flag makes the daemon fail fast
+if `--resource` or `--forgejo-url` is accidentally left as `http://`. The local
+bind address can still be plain HTTP when a trusted reverse proxy terminates TLS.
 
 The same settings can be supplied through environment variables:
 
@@ -105,6 +113,8 @@ export FORGEJO_MCPD_ISSUER=https://keycloak.example.org/realms/forgejo-agents
 export FORGEJO_MCPD_DISCOVERY_URL=https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration
 export FORGEJO_MCPD_AUDIENCE=forgejo-mcp
 export FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
+export FORGEJO_MCPD_TLS=true
+export FORGEJO_MCPD_FORGEJO_URL=https://forgejo.example.org
 export FORGEJO_MCPD_BIND=127.0.0.1:7080
 export FORGEJO_MCPD_APPROVAL_STORE=/var/lib/forgejo-mcpd/approvals.jsonl
 forgejo-keycloak-rust-mcpd
@@ -148,6 +158,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.1.2](docs/release-notes/1.1.2.md)
 - [Release Notes 1.1.0](docs/release-notes/1.1.0.md)
 - [Release Notes 1.0.2](docs/release-notes/1.0.2.md)
 - [Release Notes 1.0.1](docs/release-notes/1.0.1.md)

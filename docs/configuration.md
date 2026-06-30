@@ -11,6 +11,7 @@
 | `--bind` | `FORGEJO_MCPD_BIND` | No | Socket address to listen on. Defaults to `127.0.0.1:7080`. |
 | `--principal-map` | `FORGEJO_MCPD_PRINCIPAL_MAP` | No | Path to the Phase 1 Keycloak-to-Forgejo mapping JSON file. Required for Forgejo-backed tools. |
 | `--forgejo-url` | `FORGEJO_MCPD_FORGEJO_URL` | No | Base URL for the Forgejo instance. Required for Forgejo-backed tools. |
+| `--tls`, `--ssl` | `FORGEJO_MCPD_TLS` | No | Require configured public MCP and Forgejo URLs to use `https://`. |
 | `--trusted-user-header` | `FORGEJO_MCPD_TRUSTED_USER_HEADER` | No | Trusted reverse-proxy username header generated from the mapped Forgejo login. Defaults to `X-WEBAUTH-USER`. |
 | `--trusted-email-header` | `FORGEJO_MCPD_TRUSTED_EMAIL_HEADER` | No | Optional trusted reverse-proxy email header generated from the mapping. |
 | `--trusted-full-name-header` | `FORGEJO_MCPD_TRUSTED_FULL_NAME_HEADER` | No | Optional trusted reverse-proxy full-name header generated from the mapping. |
@@ -26,6 +27,12 @@ Use operator-reachable, agent-reachable URLs for both `FORGEJO_MCPD_ISSUER` and 
 - MCP protected-resource metadata.
 - OPIR-P project inputs and work-order context.
 - Agent setup docs and shell examples.
+
+If Forgejo is served over HTTPS, set `FORGEJO_MCPD_RESOURCE` and
+`FORGEJO_MCPD_FORGEJO_URL` to `https://` URLs and enable
+`FORGEJO_MCPD_TLS=true` or pass `--tls`. This does not make the daemon terminate
+TLS itself; it verifies the public URLs used in metadata and Forgejo API calls
+while a reverse proxy can still forward to a local HTTP bind.
 
 Create a dedicated client or audience for the gateway. The access token presented to `/mcp` must contain:
 

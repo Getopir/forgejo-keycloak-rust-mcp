@@ -2,7 +2,7 @@
 
 [package]
 name = "forgejo-keycloak-rust-mcp"
-version = "1.1.0"
+version = "1.1.2"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -10,7 +10,7 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 description = "Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement."
-readme = "../../README.md"
+readme = "README.md"
 keywords.workspace = true
 categories.workspace = true
 
@@ -24,11 +24,11 @@ path = "src/bin/forgejo-mcpctl.rs"
 
 [dependencies]
 anyhow.workspace = true
-audit = { package = "forgejo-keycloak-mcp-audit", path = "../audit", version = "1.1.0" }
+audit = { package = "forgejo-keycloak-mcp-audit", path = "../audit", version = "1.1.2" }
 axum.workspace = true
 clap.workspace = true
-identity = { package = "forgejo-keycloak-mcp-identity", path = "../identity", version = "1.1.0" }
-policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.1.0" }
+identity = { package = "forgejo-keycloak-mcp-identity", path = "../identity", version = "1.1.2" }
+policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.1.2" }
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

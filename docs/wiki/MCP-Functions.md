@@ -55,7 +55,7 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://release/GetOpir/forgejo-keycloak-rust-mcp/v0.10.0`
 - `forgejo://notification/123`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.0` release supports approval-backed pull-request creation, pull-request merge, release creation, generated API classification coverage, and capability discovery while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.2` release supports approval-backed pull-request creation, pull-request merge, release creation, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, and `create_release` also support dry-run preview with no Forgejo mutation.
 

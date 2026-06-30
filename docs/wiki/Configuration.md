@@ -6,6 +6,7 @@ Configure the daemon with these values:
 - OIDC discovery URL.
 - MCP audience.
 - Public MCP resource URL.
+- Optional HTTPS guard: `--tls`, `--ssl`, or `FORGEJO_MCPD_TLS=true`.
 - Listen address.
 - Forgejo base URL for Forgejo-backed tools.
 - Principal map path.
@@ -16,6 +17,8 @@ Configure the daemon with these values:
 Use environment variables or a deployment secret file outside the repository. Never commit tokens, client secrets, or private keys.
 
 Use canonical URLs that operators, agents, OPIR-P, Keycloak, and the gateway can all resolve consistently. A container-only issuer such as `http://keycloak:8080/realms/master` is suitable only when every caller runs in the same DNS context. Prefer a stable LAN DNS name or HTTPS URL and reuse it in Keycloak issuer metadata, MCP protected-resource metadata, OPIR-P work-order inputs, and agent setup docs.
+
+When Forgejo or the MCP public route is served over HTTPS, set the public MCP resource URL and Forgejo base URL to `https://` and enable the HTTPS guard. The guard validates URL configuration; TLS termination still belongs in the reverse proxy or TLS layer in front of the local daemon bind.
 
 The principal map binds Keycloak `(issuer, subject)` to a Forgejo login and names the environment variable that contains that mapped user's Forgejo token. The map must not contain token values. Duplicate mappings and malformed token environment names are rejected at startup.
 

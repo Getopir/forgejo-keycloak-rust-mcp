@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.1.0` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, creates pull requests after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, and returns bounded generated Forgejo API coverage metadata.
+`1.1.2` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue or pull-request comments, creates pull requests after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
 
 ## HTTP Surface
 

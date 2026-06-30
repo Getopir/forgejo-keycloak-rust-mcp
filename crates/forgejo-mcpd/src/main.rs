@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use anyhow::Context;
+use anyhow::{Context, ensure};
 use approval::{ApprovalError, ApprovalStore};
 use audit::{AuditDecision, AuditEvent, PrincipalType};
 use axum::extract::State;
@@ -45,6 +45,8 @@ struct Args {
     principal_map: Option<PathBuf>,
     #[arg(long, env = "FORGEJO_MCPD_FORGEJO_URL")]
     forgejo_url: Option<String>,
+    #[arg(long, alias = "ssl", env = "FORGEJO_MCPD_TLS", default_value_t = false)]
+    tls: bool,
     #[arg(
         long,
         env = "FORGEJO_MCPD_TRUSTED_USER_HEADER",
@@ -172,6 +174,7 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let args = Args::parse();
+    validate_tls_urls(args.tls, &args.resource, args.forgejo_url.as_deref())?;
     let discovery_url = args.discovery_url.clone().unwrap_or_else(|| {
         format!(
             "{}/.well-known/openid-configuration",
@@ -224,6 +227,35 @@ async fn main() -> anyhow::Result<()> {
     info!(addr = %args.bind, "forgejo-mcpd listening");
     serve(listener, app).await?;
     Ok(())
+}
+
+fn validate_tls_urls(
+    tls_enabled: bool,
+    resource: &str,
+    forgejo_url: Option<&str>,
+) -> anyhow::Result<()> {
+    if !tls_enabled {
+        return Ok(());
+    }
+
+    ensure!(
+        has_https_scheme(resource),
+        "--tls requires --resource to use an https:// public MCP URL"
+    );
+    if let Some(forgejo_url) = forgejo_url {
+        ensure!(
+            has_https_scheme(forgejo_url),
+            "--tls requires --forgejo-url to use an https:// Forgejo URL"
+        );
+    }
+    Ok(())
+}
+
+fn has_https_scheme(value: &str) -> bool {
+    value
+        .trim_start()
+        .get(..8)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"))
 }
 
 async fn health() -> Json<Health> {
@@ -1723,4 +1755,36 @@ fn error_response(status: StatusCode, request_id: Uuid, error: &str) -> axum::re
         Json(serde_json::json!({ "request_id": request_id, "error": error })),
     )
         .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_tls_urls;
+
+    #[test]
+    fn tls_flag_requires_https_resource() {
+        let err = validate_tls_urls(true, "http://127.0.0.1:7080/mcp", None).unwrap_err();
+        assert!(err.to_string().contains("--resource"));
+    }
+
+    #[test]
+    fn tls_flag_requires_https_forgejo_url_when_configured() {
+        let err = validate_tls_urls(
+            true,
+            "https://forgejo.example.org/mcp",
+            Some("http://forgejo.example.org"),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("--forgejo-url"));
+    }
+
+    #[test]
+    fn tls_flag_accepts_https_urls() {
+        validate_tls_urls(
+            true,
+            "https://forgejo.example.org/mcp",
+            Some("https://forgejo.example.org"),
+        )
+        .unwrap();
+    }
 }

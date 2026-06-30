@@ -41,8 +41,15 @@ FORGEJO_MCPD_ISSUER=https://keycloak.example.org/realms/forgejo-agents
 FORGEJO_MCPD_DISCOVERY_URL=https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration
 FORGEJO_MCPD_AUDIENCE=forgejo-mcp
 FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
+FORGEJO_MCPD_TLS=true
 FORGEJO_MCPD_BIND=127.0.0.1:7080
 ```
+
+Warning: when Forgejo or the MCP public route is HTTPS, the public URLs must use
+`https://`. Add `--tls` or `--ssl` to the daemon command, or set
+`FORGEJO_MCPD_TLS=true`, so setup fails instead of advertising or calling an
+accidental `http://` URL. The daemon may still bind to `127.0.0.1:7080` over
+plain HTTP when TLS is terminated by a local reverse proxy.
 
 For Phase 1 and Phase 2 Forgejo-backed tools, add:
 
@@ -51,6 +58,21 @@ FORGEJO_MCPD_FORGEJO_URL=https://forgejo.example.org
 FORGEJO_MCPD_PRINCIPAL_MAP=/etc/forgejo-mcpd/principals.json
 FORGEJO_MCPD_MAX_PAGE_LIMIT=50
 FORGEJO_AGENT_READER_TOKEN=...
+```
+
+Equivalent HTTPS Forgejo daemon command:
+
+```sh
+forgejo-keycloak-rust-mcpd \
+  --issuer https://keycloak.example.org/realms/forgejo-agents \
+  --discovery-url https://keycloak.example.org/realms/forgejo-agents/.well-known/openid-configuration \
+  --audience forgejo-mcp \
+  --resource https://forgejo.example.org/mcp \
+  --tls \
+  --forgejo-url https://forgejo.example.org \
+  --principal-map /etc/forgejo-mcpd/principals.json \
+  --approval-store /var/lib/forgejo-mcpd/approvals.jsonl \
+  --bind 127.0.0.1:7080
 ```
 
 The principal map stores `api_token_env` names, not token values. Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` and `/etc/forgejo-mcpd/principals.json` out of source control if they contain production identities or runtime token names. The `api_token_env` values must use ASCII letters, digits, and underscore only.
