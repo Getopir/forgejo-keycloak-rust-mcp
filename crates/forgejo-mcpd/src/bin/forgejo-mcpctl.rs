@@ -25,11 +25,17 @@ enum Command {
     GatewayProbe(TargetArgs),
     RepositoryMetadata(TargetArgs),
     RepositoryIssues(ListTargetArgs),
+    CreateIssue(CreateIssueArgs),
     IssueComment(CommentArgs),
     PullRequests(ListTargetArgs),
     CreatePullRequest(CreatePullRequestArgs),
     PullReviews(NumberedListArgs),
     Releases(ListTargetArgs),
+    WikiPages(NumberedListArgs),
+    WikiPage(WikiPageReadArgs),
+    CreateWikiPage(WikiPageWriteArgs),
+    UpdateWikiPage(WikiPageWriteArgs),
+    CredentialReferenceStatus,
     ApiCoverage(ApiCoverageArgs),
     CreateRelease(CreateReleaseArgs),
     Notifications(NotificationArgs),
@@ -89,6 +95,43 @@ struct CommentArgs {
     target: String,
     #[arg(long)]
     body: String,
+}
+
+#[derive(Debug, Parser)]
+struct CreateIssueArgs {
+    target: String,
+    #[arg(long)]
+    title: String,
+    #[arg(long)]
+    body: Option<String>,
+    #[arg(long)]
+    assignee: Option<String>,
+    #[arg(long)]
+    assignee_user: Vec<String>,
+    #[arg(long)]
+    label: Vec<i64>,
+}
+
+#[derive(Debug, Parser)]
+struct WikiPageReadArgs {
+    target: String,
+    #[arg(long)]
+    page: String,
+}
+
+#[derive(Debug, Parser)]
+struct WikiPageWriteArgs {
+    target: String,
+    #[arg(long)]
+    title: String,
+    #[arg(long)]
+    content_base64: String,
+    #[arg(long)]
+    message: Option<String>,
+    #[arg(long)]
+    approval_id: Option<String>,
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -269,6 +312,24 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::CreateIssue(args) => McpRequest {
+                operation: "create_issue",
+                requested_operation: None,
+                target: Some(args.target),
+                query: None,
+                limit: None,
+                cursor: None,
+                state: None,
+                body: Some(issue_body(
+                    args.title,
+                    args.body,
+                    args.assignee,
+                    args.assignee_user,
+                    args.label,
+                )),
+                approval_id: None,
+                dry_run: false,
+            },
             Command::IssueComment(args) => McpRequest {
                 operation: "create_issue_comment",
                 requested_operation: None,
@@ -303,6 +364,39 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::WikiPages(args) => list_request(
+                "list_wiki_pages",
+                Some(args.target),
+                None,
+                args.limit,
+                args.cursor,
+            ),
+            Command::WikiPage(args) => McpRequest {
+                operation: "get_wiki_page",
+                requested_operation: None,
+                target: Some(args.target),
+                query: Some(args.page),
+                limit: None,
+                cursor: None,
+                state: None,
+                body: None,
+                approval_id: None,
+                dry_run: false,
+            },
+            Command::CreateWikiPage(args) => wiki_write_request("create_wiki_page", args),
+            Command::UpdateWikiPage(args) => wiki_write_request("update_wiki_page", args),
+            Command::CredentialReferenceStatus => McpRequest {
+                operation: "credential_reference_status",
+                requested_operation: None,
+                target: None,
+                query: None,
+                limit: None,
+                cursor: None,
+                state: None,
+                body: None,
+                approval_id: None,
+                dry_run: false,
+            },
             Command::ApiCoverage(args) => McpRequest {
                 operation: "forgejo_api_coverage",
                 requested_operation: None,
@@ -408,6 +502,51 @@ fn list_request(
         body: None,
         approval_id: None,
         dry_run: false,
+    }
+}
+
+fn issue_body(
+    title: String,
+    body: Option<String>,
+    assignee: Option<String>,
+    assignees: Vec<String>,
+    labels: Vec<i64>,
+) -> String {
+    let mut value = serde_json::json!({ "title": title });
+    if let Some(body) = body {
+        value["body"] = serde_json::json!(body);
+    }
+    if let Some(assignee) = assignee {
+        value["assignee"] = serde_json::json!(assignee);
+    }
+    if !assignees.is_empty() {
+        value["assignees"] = serde_json::json!(assignees);
+    }
+    if !labels.is_empty() {
+        value["labels"] = serde_json::json!(labels);
+    }
+    value.to_string()
+}
+
+fn wiki_write_request(operation: &'static str, args: WikiPageWriteArgs) -> McpRequest {
+    let mut value = serde_json::json!({
+        "title": args.title,
+        "content_base64": args.content_base64,
+    });
+    if let Some(message) = args.message {
+        value["message"] = serde_json::json!(message);
+    }
+    McpRequest {
+        operation,
+        requested_operation: None,
+        target: Some(args.target),
+        query: None,
+        limit: None,
+        cursor: None,
+        state: None,
+        body: Some(value.to_string()),
+        approval_id: args.approval_id,
+        dry_run: args.dry_run,
     }
 }
 

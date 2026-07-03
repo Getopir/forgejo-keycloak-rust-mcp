@@ -1,6 +1,6 @@
 # Features
 
-`1.1.2` is the HTTPS setup hardening release of the Forgejo Keycloak Rust MCP gateway.
+`1.1.3` is the issue, wiki, and credential-reference MCP expansion release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 

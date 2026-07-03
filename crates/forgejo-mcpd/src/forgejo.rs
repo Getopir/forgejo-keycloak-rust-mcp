@@ -123,6 +123,31 @@ pub struct IssueSummary {
     pub is_pull_request: bool,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CreateIssueOptions {
+    pub title: String,
+    #[serde(default)]
+    pub body: Option<String>,
+    #[serde(default)]
+    pub assignee: Option<String>,
+    #[serde(default)]
+    pub assignees: Vec<String>,
+    #[serde(default)]
+    pub labels: Vec<i64>,
+    #[serde(default)]
+    pub milestone: Option<i64>,
+    #[serde(default)]
+    pub due_date: Option<String>,
+    #[serde(default)]
+    pub reference: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateIssueResult {
+    pub resource_uri: String,
+    pub issue: IssueSummary,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoPullRequest {
     number: u64,
@@ -269,6 +294,48 @@ pub struct IssueCommentSummary {
     pub updated_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoWikiPage {
+    title: String,
+    html_url: Option<String>,
+    sub_url: Option<String>,
+    content_base64: Option<String>,
+    commit_count: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoWikiPageMetaData {
+    title: String,
+    html_url: Option<String>,
+    sub_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WikiPageSummary {
+    pub resource_uri: String,
+    pub title: String,
+    pub html_url: Option<String>,
+    pub sub_url: Option<String>,
+    pub commit_count: Option<i64>,
+    pub has_content_base64: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WikiPageMetaSummary {
+    pub resource_uri: String,
+    pub title: String,
+    pub html_url: Option<String>,
+    pub sub_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WikiPageOptions {
+    pub title: String,
+    pub content_base64: String,
+    #[serde(default)]
+    pub message: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CreateReleaseOptions {
     pub tag_name: String,
@@ -326,6 +393,16 @@ pub enum ForgejoError {
     InvalidCursor,
     #[error("issue comment body is required")]
     MissingCommentBody,
+    #[error("issue options body must be JSON when supplied")]
+    InvalidIssueOptions,
+    #[error("issue title is required")]
+    MissingIssueTitle,
+    #[error("wiki page options body must be JSON when supplied")]
+    InvalidWikiPageOptions,
+    #[error("wiki page title is required")]
+    MissingWikiPageTitle,
+    #[error("wiki page content_base64 is required")]
+    MissingWikiPageContent,
     #[error("release options body must be JSON when supplied")]
     InvalidReleaseOptions,
     #[error("release tag_name is required")]
@@ -415,6 +492,44 @@ impl ForgejoClient {
                 page,
             ),
             status,
+        ))
+    }
+
+    pub async fn create_issue(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &CreateIssueOptions,
+    ) -> Result<(CreateIssueResult, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/issues",
+            self.base_url, target.owner, target.repo
+        );
+        let response = self
+            .http
+            .post(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&options.to_forgejo_payload())
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let issue = response
+            .json::<ForgejoIssue>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let issue = IssueSummary::from_issue(issue, target);
+        Ok((
+            CreateIssueResult {
+                resource_uri: issue.resource_uri.clone(),
+                issue,
+            },
+            status.as_u16(),
         ))
     }
 
@@ -659,6 +774,114 @@ impl ForgejoClient {
         ))
     }
 
+    pub async fn list_wiki_pages(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        page: PageRequest,
+    ) -> Result<(Page<WikiPageMetaSummary>, u16), ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/wiki/pages",
+            self.base_url, target.owner, target.repo
+        );
+        let query = page.query();
+        let (items, status) = self
+            .get_json::<Vec<ForgejoWikiPageMetaData>>(token, url, &query)
+            .await?;
+        Ok((
+            Page::new(
+                items
+                    .into_iter()
+                    .map(|item| WikiPageMetaSummary::from_page(item, target))
+                    .collect(),
+                page,
+            ),
+            status,
+        ))
+    }
+
+    pub async fn get_wiki_page(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        page_name: &str,
+    ) -> Result<(WikiPageSummary, u16), ForgejoError> {
+        let page_name = page_name.trim();
+        if page_name.is_empty() {
+            return Err(ForgejoError::MissingWikiPageTitle);
+        }
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/wiki/page/{}",
+            self.base_url,
+            target.owner,
+            target.repo,
+            percent_encode_path_segment(page_name)
+        );
+        let (page, status) = self.get_json::<ForgejoWikiPage>(token, url, &[]).await?;
+        Ok((WikiPageSummary::from_page(page, target), status))
+    }
+
+    pub async fn create_wiki_page(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &WikiPageOptions,
+    ) -> Result<(WikiPageSummary, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/wiki/new",
+            self.base_url, target.owner, target.repo
+        );
+        self.write_wiki_page(token, target, url, reqwest::Method::POST, options)
+            .await
+    }
+
+    pub async fn update_wiki_page(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &WikiPageOptions,
+    ) -> Result<(WikiPageSummary, u16), ForgejoError> {
+        options.validate()?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/wiki/page/{}",
+            self.base_url,
+            target.owner,
+            target.repo,
+            percent_encode_path_segment(&options.title)
+        );
+        self.write_wiki_page(token, target, url, reqwest::Method::PATCH, options)
+            .await
+    }
+
+    async fn write_wiki_page(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        url: String,
+        method: reqwest::Method,
+        options: &WikiPageOptions,
+    ) -> Result<(WikiPageSummary, u16), ForgejoError> {
+        let response = self
+            .http
+            .request(method, url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&options.to_forgejo_payload())
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let page = response
+            .json::<ForgejoWikiPage>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        Ok((WikiPageSummary::from_page(page, target), status.as_u16()))
+    }
+
     pub async fn merge_pull_request(
         &self,
         token: &str,
@@ -726,6 +949,105 @@ impl ForgejoClient {
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
         Ok((value, status.as_u16()))
+    }
+}
+
+impl CreateIssueOptions {
+    pub fn from_body(body: Option<&str>) -> Result<Self, ForgejoError> {
+        let Some(body) = body.map(str::trim).filter(|body| !body.is_empty()) else {
+            return Err(ForgejoError::MissingIssueTitle);
+        };
+        let options: Self =
+            serde_json::from_str(body).map_err(|_| ForgejoError::InvalidIssueOptions)?;
+        options.validate()?;
+        Ok(options)
+    }
+
+    fn validate(&self) -> Result<(), ForgejoError> {
+        if self.title.trim().is_empty() {
+            return Err(ForgejoError::MissingIssueTitle);
+        }
+        Ok(())
+    }
+
+    fn to_forgejo_payload(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({ "title": self.title.trim() });
+        if let Some(body) = &self.body {
+            value["body"] = serde_json::json!(body);
+        }
+        if let Some(assignee) = self
+            .assignee
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["assignee"] = serde_json::json!(assignee);
+        }
+        let assignees = self
+            .assignees
+            .iter()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>();
+        if !assignees.is_empty() {
+            value["assignees"] = serde_json::json!(assignees);
+        }
+        if !self.labels.is_empty() {
+            value["labels"] = serde_json::json!(self.labels);
+        }
+        if let Some(milestone) = self.milestone {
+            value["milestone"] = serde_json::json!(milestone);
+        }
+        if let Some(due_date) = &self.due_date {
+            value["due_date"] = serde_json::json!(due_date);
+        }
+        if let Some(reference) = self
+            .reference
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["ref"] = serde_json::json!(reference);
+        }
+        value
+    }
+}
+
+impl WikiPageOptions {
+    pub fn from_body(body: Option<&str>) -> Result<Self, ForgejoError> {
+        let Some(body) = body.map(str::trim).filter(|body| !body.is_empty()) else {
+            return Err(ForgejoError::MissingWikiPageTitle);
+        };
+        let options: Self =
+            serde_json::from_str(body).map_err(|_| ForgejoError::InvalidWikiPageOptions)?;
+        options.validate()?;
+        Ok(options)
+    }
+
+    fn validate(&self) -> Result<(), ForgejoError> {
+        if self.title.trim().is_empty() {
+            return Err(ForgejoError::MissingWikiPageTitle);
+        }
+        if self.content_base64.trim().is_empty() {
+            return Err(ForgejoError::MissingWikiPageContent);
+        }
+        Ok(())
+    }
+
+    fn to_forgejo_payload(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "title": self.title.trim(),
+            "content_base64": self.content_base64.trim(),
+        });
+        if let Some(message) = self
+            .message
+            .as_ref()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+        {
+            value["message"] = serde_json::json!(message);
+        }
+        value
     }
 }
 
@@ -1018,6 +1340,21 @@ fn parse_positive_page(value: &str) -> Result<u32, ForgejoError> {
     Ok(page)
 }
 
+fn percent_encode_path_segment(value: &str) -> String {
+    let mut encoded = String::new();
+    for &byte in value.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            const HEX: &[u8; 16] = b"0123456789ABCDEF";
+            encoded.push('%');
+            encoded.push(HEX[(byte >> 4) as usize] as char);
+            encoded.push(HEX[(byte & 0x0f) as usize] as char);
+        }
+    }
+    encoded
+}
+
 impl RepositoryMetadata {
     fn from_repository(value: ForgejoRepository, target: &RepositoryTarget) -> Self {
         Self {
@@ -1054,6 +1391,38 @@ impl IssueSummary {
             created_at: value.created_at,
             updated_at: value.updated_at,
             is_pull_request: value.pull_request.is_some(),
+        }
+    }
+}
+
+impl WikiPageSummary {
+    fn from_page(value: ForgejoWikiPage, target: &RepositoryTarget) -> Self {
+        let title = value.title;
+        Self {
+            resource_uri: format!(
+                "forgejo://wiki-page/{}/{}/{}",
+                target.owner, target.repo, title
+            ),
+            title,
+            html_url: value.html_url,
+            sub_url: value.sub_url,
+            commit_count: value.commit_count,
+            has_content_base64: value.content_base64.is_some(),
+        }
+    }
+}
+
+impl WikiPageMetaSummary {
+    fn from_page(value: ForgejoWikiPageMetaData, target: &RepositoryTarget) -> Self {
+        let title = value.title;
+        Self {
+            resource_uri: format!(
+                "forgejo://wiki-page/{}/{}/{}",
+                target.owner, target.repo, title
+            ),
+            title,
+            html_url: value.html_url,
+            sub_url: value.sub_url,
         }
     }
 }
@@ -1255,6 +1624,42 @@ mod tests {
                 .is_err()
         );
         assert!(CreatePullRequestOptions::from_body(None).is_err());
+    }
+
+    #[test]
+    fn parses_create_issue_options_from_json_body() {
+        let options = CreateIssueOptions::from_body(Some(
+            r#"{"title":"Repair adapter","body":"details","assignees":["agent"],"labels":[1,2],"reference":"main"}"#,
+        ))
+        .unwrap();
+        assert_eq!(options.title, "Repair adapter");
+        let payload = options.to_forgejo_payload();
+        assert_eq!(payload["title"], "Repair adapter");
+        assert_eq!(payload["assignees"][0], "agent");
+        assert_eq!(payload["labels"][1], 2);
+        assert_eq!(payload["ref"], "main");
+
+        assert!(CreateIssueOptions::from_body(Some("not json")).is_err());
+        assert!(CreateIssueOptions::from_body(Some(r#"{"body":"missing title"}"#)).is_err());
+    }
+
+    #[test]
+    fn parses_wiki_page_options_without_decoding_content() {
+        let options = WikiPageOptions::from_body(Some(
+            r#"{"title":"Agent-Runbook","content_base64":"IyBSdW5ib29rCg==","message":"Publish runbook"}"#,
+        ))
+        .unwrap();
+        let payload = options.to_forgejo_payload();
+        assert_eq!(payload["title"], "Agent-Runbook");
+        assert_eq!(payload["content_base64"], "IyBSdW5ib29rCg==");
+        assert_eq!(payload["message"], "Publish runbook");
+        assert_eq!(
+            percent_encode_path_segment("Agent Runbook"),
+            "Agent%20Runbook"
+        );
+
+        assert!(WikiPageOptions::from_body(Some("not json")).is_err());
+        assert!(WikiPageOptions::from_body(Some(r#"{"title":"missing content"}"#)).is_err());
     }
 
     #[test]

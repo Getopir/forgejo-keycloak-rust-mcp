@@ -126,8 +126,30 @@ forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp \
   --approval-id "$APPROVAL_ID"
 ```
 
-Current PR lifecycle support covers branch-to-PR bootstrap, PR listing, review listing, approval-gated merge, comments, and releases. Standalone PR update, standalone reviewer request, branch status, required checks, and PR check readback are intentionally listed as planned capabilities until their schemas and output limits are reviewed.
+Current PR lifecycle support covers branch-to-PR bootstrap, PR listing, review listing, approval-gated merge, comments, additive issue creation, wiki readback/publication, safe credential-reference status, and releases. Standalone PR update, standalone reviewer request, branch status, required checks, and PR check readback are intentionally listed as planned capabilities until their schemas and output limits are reviewed.
+
+## Issue And Wiki Workflow
+
+Use `create_issue` for durable Forgejo repair tickets. It is additive and still depends on the mapped Forgejo user's repository ACLs:
+
+```sh
+forgejo-mcpctl create-issue GetOpir/forgejo-keycloak-rust-mcp \
+  --title "Repair MCP adapter coverage" \
+  --body "Observed through OPIR-P PRJ-SM-018."
+```
+
+Use wiki tools for operating packages and runbooks. Wiki create/update bodies use `content_base64`; do not put raw secrets in page content or commit messages.
+
+```sh
+forgejo-mcpctl wiki-pages GetOpir/forgejo-keycloak-rust-mcp --limit 25
+forgejo-mcpctl create-wiki-page GetOpir/forgejo-keycloak-rust-mcp \
+  --title Agent-Runbook \
+  --content-base64 IyBBZ2VudCBSdW5ib29rCg== \
+  --dry-run
+```
+
+Use `credential_reference_status` when an agent needs to prove whether its mapped runtime token reference is configured. The response reports environment-variable presence and identity metadata only; it never returns token values.
 
 ## Agent Policy
 
-Agents should request the least powerful operation scope available. High-risk operations such as pull-request creation, pull-request merge, release creation, and repository deletion are policy-classified as approval-required.
+Agents should request the least powerful operation scope available. High-risk operations such as pull-request creation, pull-request merge, release creation, wiki publication, and repository deletion are policy-classified as approval-required.

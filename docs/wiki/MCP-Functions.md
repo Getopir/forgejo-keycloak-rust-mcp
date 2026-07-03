@@ -13,12 +13,18 @@ The current release exposes:
 - `gateway_probe`
 - `list_repository_metadata`
 - `list_repository_issues`
+- `create_issue`
 - `create_issue_comment`
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
 - `list_releases`
 - `list_notifications`
+- `list_wiki_pages`
+- `get_wiki_page`
+- `create_wiki_page`
+- `update_wiki_page`
+- `credential_reference_status`
 - `forgejo_api_coverage`
 - `create_approval`
 - `create_release`
@@ -30,12 +36,18 @@ The current release exposes:
 Phase 2 baseline tools:
 
 - `list_repository_issues`: bounded issue summaries for `owner/repository`.
+- `create_issue`: additive issue creation for `owner/repository`.
 - `create_issue_comment`: additive issue or pull-request comment for `owner/repository#number`.
 - `list_pull_requests`: bounded pull-request summaries.
 - `create_pull_request`: approval-backed PR creation from a pushed branch, with optional assignee and reviewer request inputs.
 - `list_pull_request_reviews`: bounded review summaries for `owner/repository#number`.
 - `list_releases`: bounded release summaries.
 - `list_notifications`: bounded notification summaries for the mapped Forgejo principal.
+- `list_wiki_pages`: bounded wiki page metadata for `owner/repository`.
+- `get_wiki_page`: bounded wiki page metadata for `owner/repository`; pass the page name in `query`.
+- `create_wiki_page`: approval-backed wiki page creation with `title`, `content_base64`, and optional `message`.
+- `update_wiki_page`: approval-backed wiki page update with `title`, `content_base64`, and optional `message`.
+- `credential_reference_status`: mapped identity and downstream token environment-variable presence without secret values.
 
 Phase 3 generated coverage tool:
 
@@ -54,10 +66,11 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1`
 - `forgejo://release/GetOpir/forgejo-keycloak-rust-mcp/v0.10.0`
 - `forgejo://notification/123`
+- `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.2` release supports approval-backed pull-request creation, pull-request merge, release creation, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.3` release supports additive issue creation, approval-backed pull-request creation, pull-request merge, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
-`create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, and `create_release` also support dry-run preview with no Forgejo mutation.
+`create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 
 PR creation body fields:
 
@@ -74,4 +87,8 @@ Coverage examples:
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
 forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25
 forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp --head feature-branch --base main --title "Add feature" --dry-run
+forgejo-mcpctl create-issue GetOpir/forgejo-keycloak-rust-mcp --title "Repair MCP adapter coverage"
+forgejo-mcpctl wiki-pages GetOpir/forgejo-keycloak-rust-mcp --limit 25
+forgejo-mcpctl create-wiki-page GetOpir/forgejo-keycloak-rust-mcp --title Agent-Runbook --content-base64 IyBBZ2VudCBSdW5ib29rCg== --dry-run
+forgejo-mcpctl credential-reference-status
 ```

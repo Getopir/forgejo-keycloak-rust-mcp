@@ -144,6 +144,13 @@ impl OperationRegistry {
                 description: "List bounded issue summaries through mapped Forgejo identity.",
             },
             Operation {
+                name: "create_issue",
+                scope: "forgejo:issue:write",
+                risk: RiskClass::WriteAdditive,
+                approval_required: false,
+                description: "Create a bounded Forgejo issue through mapped Forgejo identity.",
+            },
+            Operation {
                 name: "create_issue_comment",
                 scope: "forgejo:issue:write",
                 risk: RiskClass::WriteAdditive,
@@ -184,6 +191,41 @@ impl OperationRegistry {
                 risk: RiskClass::ReadPrivate,
                 approval_required: false,
                 description: "List bounded notification summaries for the mapped Forgejo principal.",
+            },
+            Operation {
+                name: "list_wiki_pages",
+                scope: "forgejo:wiki:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "List bounded wiki page metadata through mapped Forgejo identity.",
+            },
+            Operation {
+                name: "get_wiki_page",
+                scope: "forgejo:wiki:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "Read one bounded wiki page through mapped Forgejo identity.",
+            },
+            Operation {
+                name: "create_wiki_page",
+                scope: "forgejo:wiki:write",
+                risk: RiskClass::WriteMutating,
+                approval_required: true,
+                description: "Create a Forgejo wiki page after exact-payload approval.",
+            },
+            Operation {
+                name: "update_wiki_page",
+                scope: "forgejo:wiki:write",
+                risk: RiskClass::WriteMutating,
+                approval_required: true,
+                description: "Update a Forgejo wiki page after exact-payload approval.",
+            },
+            Operation {
+                name: "credential_reference_status",
+                scope: "forgejo:repo:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "Report mapped identity and downstream credential-reference presence without exposing secret values.",
             },
             Operation {
                 name: "forgejo_api_coverage",
@@ -516,12 +558,17 @@ fn semantic_operation(method: &str, path: &str) -> Option<&'static str> {
     match (method, path) {
         ("GET", "/repos/{owner}/{repo}") => Some("list_repository_metadata"),
         ("GET", "/repos/{owner}/{repo}/issues") => Some("list_repository_issues"),
+        ("POST", "/repos/{owner}/{repo}/issues") => Some("create_issue"),
         ("POST", "/repos/{owner}/{repo}/issues/{index}/comments") => Some("create_issue_comment"),
         ("GET", "/repos/{owner}/{repo}/pulls") => Some("list_pull_requests"),
         ("POST", "/repos/{owner}/{repo}/pulls") => Some("create_pull_request"),
         ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews") => Some("list_pull_request_reviews"),
         ("GET", "/repos/{owner}/{repo}/releases") => Some("list_releases"),
         ("POST", "/repos/{owner}/{repo}/releases") => Some("create_release"),
+        ("GET", "/repos/{owner}/{repo}/wiki/pages") => Some("list_wiki_pages"),
+        ("GET", "/repos/{owner}/{repo}/wiki/page/{pageName}") => Some("get_wiki_page"),
+        ("POST", "/repos/{owner}/{repo}/wiki/new") => Some("create_wiki_page"),
+        ("PATCH", "/repos/{owner}/{repo}/wiki/page/{pageName}") => Some("update_wiki_page"),
         ("GET", "/notifications") => Some("list_notifications"),
         ("POST", "/repos/{owner}/{repo}/pulls/{index}/merge") => Some("merge_pull_request"),
         _ => None,
@@ -602,7 +649,7 @@ mod tests {
             .iter()
             .filter(|endpoint| endpoint.exposure == EndpointExposure::SemanticOverlay)
             .count();
-        assert_eq!(semantic, 10);
+        assert_eq!(semantic, 15);
         assert!(
             catalog
                 .endpoints

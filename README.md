@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.1.2` means:
+Version `1.1.3` means:
 
 - `1`: first stable public release line.
 - `1`: first post-stable feature series.
-- `1`: HTTPS setup guard and documentation update in this feature series.
+- `3`: issue, wiki, and credential-reference MCP tool expansion in this feature series.
 
 The governing rule is:
 
@@ -29,7 +29,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.1.2` is the HTTPS setup hardening release of the hardened Forgejo Keycloak MCP gateway:
+`1.1.3` is the issue, wiki, and credential-reference MCP expansion release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -44,8 +44,11 @@ This project does not copy or translate GPL implementation code from other Forge
 - Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
 - Creates pull requests through the mapped Forgejo principal after exact-payload approval, with optional assignee and reviewer request inputs.
+- Creates bounded Forgejo issues through the mapped principal with `forgejo:issue:write`.
+- Lists and reads bounded wiki page metadata, and creates or updates wiki pages after exact-payload approval.
+- Reports mapped credential-reference presence without returning downstream token or secret values.
 - Enforces server-capped `limit` and page-token `cursor` handling for list operations.
-- Returns stable `forgejo://...` resource URIs in repository, issue, pull-request, review, release, notification, and comment summaries.
+- Returns stable `forgejo://...` resource URIs in repository, issue, pull-request, review, release, notification, comment, and wiki summaries.
 - Adds `forgejo-mcpctl` as a token-env based CLI wrapper for curated MCP calls.
 - Adds short-lived, file-backed approval records for high-risk operation gates.
 - Rejects forged, expired, mismatched, or wrong-principal approval IDs.
@@ -63,7 +66,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Adds `forgejo-mcpctl api-coverage` for operator and agent readback.
 - Keeps every non-reviewed generated endpoint disabled until a semantic overlay is reviewed.
 
-High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request creation, pull-request merge, and release creation are the reviewed approval-backed high-risk execution paths.
+High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request creation, pull-request merge, release creation, and wiki publication are the reviewed approval-backed high-risk execution paths.
 
 ## Install
 
@@ -158,6 +161,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.1.3](docs/release-notes/1.1.3.md)
 - [Release Notes 1.1.2](docs/release-notes/1.1.2.md)
 - [Release Notes 1.1.0](docs/release-notes/1.1.0.md)
 - [Release Notes 1.0.2](docs/release-notes/1.0.2.md)

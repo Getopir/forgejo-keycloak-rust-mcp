@@ -10,8 +10,9 @@ use axum::routing::{get, post};
 use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
-    CreatePullRequestOptions, CreateReleaseOptions, ForgejoClient, ForgejoError,
-    MergePullRequestOptions, NumberedTarget, PageRequest, RepositoryMetadata, RepositoryTarget,
+    CreateIssueOptions, CreatePullRequestOptions, CreateReleaseOptions, ForgejoClient,
+    ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest, RepositoryMetadata,
+    RepositoryTarget, WikiPageOptions,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
@@ -388,6 +389,10 @@ async fn mcp_handler(
             "create_release" => {
                 return create_release_response(request_id, state, principal, body, decision).await;
             }
+            "create_wiki_page" | "update_wiki_page" => {
+                return write_wiki_page_response(request_id, state, principal, body, decision)
+                    .await;
+            }
             "create_pull_request" => {
                 return create_pull_request_response(request_id, state, principal, body, decision)
                     .await;
@@ -421,8 +426,16 @@ async fn mcp_handler(
                 return repository_metadata_response(request_id, state, principal, body, decision)
                     .await;
             }
+            "credential_reference_status" => {
+                return credential_reference_status_response(
+                    request_id, state, principal, body, decision,
+                );
+            }
             "list_repository_issues" => {
                 return phase2_list_response(request_id, state, principal, body, decision).await;
+            }
+            "create_issue" => {
+                return create_issue_response(request_id, state, principal, body, decision).await;
             }
             "create_issue_comment" => {
                 return create_issue_comment_response(request_id, state, principal, body, decision)
@@ -431,8 +444,12 @@ async fn mcp_handler(
             "list_pull_requests"
             | "list_pull_request_reviews"
             | "list_releases"
-            | "list_notifications" => {
+            | "list_notifications"
+            | "list_wiki_pages" => {
                 return phase2_list_response(request_id, state, principal, body, decision).await;
+            }
+            "get_wiki_page" => {
+                return get_wiki_page_response(request_id, state, principal, body, decision).await;
             }
             _ => {}
         }
@@ -481,7 +498,7 @@ async fn mcp_handler(
                 .as_ref()
                 .map(|mapping| state.trusted_headers.delegated_headers(mapping))
                 .unwrap_or_default(),
-            operation: body.operation,
+            operation: body.operation.clone(),
             allowed: decision.allowed,
             reason: decision.reason,
             required_scope: decision.required_scope.to_string(),
@@ -597,7 +614,7 @@ async fn create_pull_request_response(
             forgejo_login: Some(access.mapping.forgejo_login.clone()),
             forgejo_user_id: access.mapping.forgejo_user_id,
             trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
-            operation: body.operation,
+            operation: body.operation.clone(),
             allowed: true,
             reason: "approval consumed and pull request created by Forgejo".to_string(),
             required_scope: decision.required_scope.to_string(),
@@ -652,7 +669,7 @@ fn create_pull_request_preview_response(
                 .as_ref()
                 .map(|mapping| state.trusted_headers.delegated_headers(mapping))
                 .unwrap_or_default(),
-            operation: body.operation,
+            operation: body.operation.clone(),
             allowed: true,
             reason: "dry-run preview only; no Forgejo mutation executed".to_string(),
             required_scope: decision.required_scope.to_string(),
@@ -776,7 +793,7 @@ async fn merge_pull_request_response(
             forgejo_login: Some(access.mapping.forgejo_login.clone()),
             forgejo_user_id: access.mapping.forgejo_user_id,
             trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
-            operation: body.operation,
+            operation: body.operation.clone(),
             allowed: true,
             reason: "approval consumed and pull request merged by Forgejo".to_string(),
             required_scope: decision.required_scope.to_string(),
@@ -1039,6 +1056,372 @@ fn create_release_preview_response(
         .into_response()
 }
 
+async fn create_issue_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_repository_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let options = match CreateIssueOptions::from_body(body.body.as_deref()) {
+        Ok(options) => options,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let (issue_result, forgejo_status) = match access
+        .forgejo
+        .create_issue(&access.token, &target, &options)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            return forgejo_error_response(request_id, "Forgejo issue creation failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "required scope present and issue created by Forgejo".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: false,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::to_value(issue_result).unwrap_or_default()),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn get_wiki_page_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_repository_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let Some(page_name) = body.query.as_deref().or(body.state.as_deref()) else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            request_id,
+            "query is required as the wiki page name for get_wiki_page",
+        );
+    };
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let (page, forgejo_status) = match access
+        .forgejo
+        .get_wiki_page(&access.token, &target, page_name)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            return forgejo_error_response(request_id, "Forgejo wiki page lookup failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "required scope present and Forgejo wiki page returned".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: false,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::to_value(page).unwrap_or_default()),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn write_wiki_page_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_repository_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let options = match WikiPageOptions::from_body(body.body.as_deref()) {
+        Ok(options) => options,
+        Err(err) => return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()),
+    };
+    if body.dry_run {
+        return write_wiki_page_preview_response(
+            request_id, state, principal, body, decision, target, options,
+        );
+    }
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let Some(store) = state.approval_store.as_ref() else {
+        audit_decision(
+            request_id,
+            &principal,
+            Some(&access.mapping),
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            request_id,
+            &ApprovalError::NotConfigured.to_string(),
+        );
+    };
+    audit_decision(
+        request_id,
+        &principal,
+        Some(&access.mapping),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    let approval = match store.consume(&body, &principal, &access.mapping) {
+        Ok(approval) => approval,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(StatusCode::FORBIDDEN, request_id, &err.to_string());
+        }
+    };
+    let write_result = if body.operation == "create_wiki_page" {
+        access
+            .forgejo
+            .create_wiki_page(&access.token, &target, &options)
+            .await
+    } else {
+        access
+            .forgejo
+            .update_wiki_page(&access.token, &target, &options)
+            .await
+    };
+    let (page, forgejo_status) = match write_result {
+        Ok(result) => result,
+        Err(err) => return forgejo_error_response(request_id, "Forgejo wiki write failed", err),
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "approval consumed and wiki page written by Forgejo".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "approval": approval,
+                "wiki_page": page,
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn write_wiki_page_preview_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+    target: RepositoryTarget,
+    options: WikiPageOptions,
+) -> axum::response::Response {
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    audit_decision(
+        request_id,
+        &principal,
+        mapping.as_ref(),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: mapping
+                .as_ref()
+                .map(|mapping| mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.as_ref().and_then(|mapping| mapping.forgejo_user_id),
+            trusted_delegation_headers: mapping
+                .as_ref()
+                .map(|mapping| state.trusted_headers.delegated_headers(mapping))
+                .unwrap_or_default(),
+            operation: body.operation.clone(),
+            allowed: true,
+            reason: "dry-run preview only; no Forgejo mutation executed".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: true,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "dry_run": true,
+                "would_execute": false,
+                "operation": body.operation,
+                "resource_uri": format!("forgejo://wiki-page/{}/{}/{}", target.owner, target.repo, options.title),
+                "wiki_page": {
+                    "title": options.title,
+                    "has_content_base64": true,
+                    "message": options.message,
+                },
+                "approval_required": true,
+                "approval_store_configured": state.approval_store.is_some(),
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn credential_reference_status_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let mapping = match principal_mapping(&state, &principal, request_id) {
+        Ok(mapping) => mapping,
+        Err(response) => return response,
+    };
+    let token_env = mapping.api_token_env.clone();
+    let token_env_present = token_env
+        .as_deref()
+        .and_then(|name| std::env::var(name).ok())
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+    audit_decision(
+        request_id,
+        &principal,
+        Some(&mapping),
+        &body,
+        &decision,
+        AuditDecision::Allow,
+        None,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(mapping.forgejo_login.clone()),
+            forgejo_user_id: mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "mapped credential reference status returned without secret values".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: false,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::json!({
+                "issuer": mapping.issuer,
+                "subject": mapping.subject,
+                "principal_type": mapping.principal_type,
+                "forgejo_login": mapping.forgejo_login,
+                "forgejo_user_id": mapping.forgejo_user_id,
+                "api_token_env": token_env,
+                "api_token_env_present": token_env_present,
+                "secret_value_returned": false,
+            })),
+            limit: None,
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
 async fn repository_metadata_response(
     request_id: Uuid,
     state: AppState,
@@ -1292,6 +1675,26 @@ async fn phase2_list_response(
                 Ok((page, status)) => (serde_json::to_value(&page).unwrap_or_default(), status),
                 Err(err) => {
                     return forgejo_error_response(request_id, "Forgejo release list failed", err);
+                }
+            }
+        }
+        "list_wiki_pages" => {
+            let target = match parse_repository_target(&body, request_id) {
+                Ok(target) => target,
+                Err(response) => return response,
+            };
+            match access
+                .forgejo
+                .list_wiki_pages(&access.token, &target, page)
+                .await
+            {
+                Ok((page, status)) => (serde_json::to_value(&page).unwrap_or_default(), status),
+                Err(err) => {
+                    return forgejo_error_response(
+                        request_id,
+                        "Forgejo wiki page list failed",
+                        err,
+                    );
                 }
             }
         }
