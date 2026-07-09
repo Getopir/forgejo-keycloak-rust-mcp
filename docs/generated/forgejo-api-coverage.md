@@ -6,8 +6,8 @@ Generated from the pinned Forgejo Swagger document.
 - Pinned spec: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`
 - SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`
 - Total operations: `491`
-- Semantic overlay operations: `10`
-- Disabled metadata-only operations: `481`
+- Semantic overlay operations: `15`
+- Disabled metadata-only operations: `476`
 - Approval-required operations: `275`
 - Destructive operations: `72`
 - Admin operations: `48`
@@ -54,6 +54,7 @@ scope, risk class, output limit, and approval policy.
 | `list_notifications` | `GET` | `/notifications` | `notifyGetList` | `read_private` | `no` |
 | `list_repository_metadata` | `GET` | `/repos/{owner}/{repo}` | `repoGet` | `read_private` | `no` |
 | `list_repository_issues` | `GET` | `/repos/{owner}/{repo}/issues` | `issueListIssues` | `read_private` | `no` |
+| `create_issue` | `POST` | `/repos/{owner}/{repo}/issues` | `issueCreateIssue` | `write_mutating` | `yes` |
 | `create_issue_comment` | `POST` | `/repos/{owner}/{repo}/issues/{index}/comments` | `issueCreateComment` | `write_additive` | `no` |
 | `list_pull_requests` | `GET` | `/repos/{owner}/{repo}/pulls` | `repoListPullRequests` | `read_private` | `no` |
 | `create_pull_request` | `POST` | `/repos/{owner}/{repo}/pulls` | `repoCreatePullRequest` | `write_mutating` | `yes` |
@@ -61,6 +62,10 @@ scope, risk class, output limit, and approval policy.
 | `list_pull_request_reviews` | `GET` | `/repos/{owner}/{repo}/pulls/{index}/reviews` | `repoListPullReviews` | `read_private` | `no` |
 | `list_releases` | `GET` | `/repos/{owner}/{repo}/releases` | `repoListReleases` | `read_private` | `no` |
 | `create_release` | `POST` | `/repos/{owner}/{repo}/releases` | `repoCreateRelease` | `write_mutating` | `yes` |
+| `create_wiki_page` | `POST` | `/repos/{owner}/{repo}/wiki/new` | `repoCreateWikiPage` | `write_mutating` | `yes` |
+| `get_wiki_page` | `GET` | `/repos/{owner}/{repo}/wiki/page/{pageName}` | `repoGetWikiPage` | `read_private` | `no` |
+| `update_wiki_page` | `PATCH` | `/repos/{owner}/{repo}/wiki/page/{pageName}` | `repoEditWikiPage` | `write_mutating` | `yes` |
+| `list_wiki_pages` | `GET` | `/repos/{owner}/{repo}/wiki/pages` | `repoGetWikiPages` | `read_private` | `no` |
 
 ## Disabled Destructive/Admin Examples
 

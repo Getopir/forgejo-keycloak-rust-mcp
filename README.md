@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.1.3` means:
+Version `1.1.4` means:
 
 - `1`: first stable public release line.
 - `1`: first post-stable feature series.
-- `3`: issue, wiki, and credential-reference MCP tool expansion in this feature series.
+- `4`: PR creation response contract and readback normalization patch in this feature series.
 
 The governing rule is:
 
@@ -29,7 +29,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.1.3` is the issue, wiki, and credential-reference MCP expansion release of the hardened Forgejo Keycloak MCP gateway:
+`1.1.4` is the PR creation response contract patch release of the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -43,6 +43,8 @@ This project does not copy or translate GPL implementation code from other Forge
 - Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
 - Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
+- Creates approval-backed pull requests and returns a normalized PR directly at `result.pull_request`.
+- Falls back to authoritative open-PR readback when Forgejo returns a sparse PR creation response.
 - Creates pull requests through the mapped Forgejo principal after exact-payload approval, with optional assignee and reviewer request inputs.
 - Creates bounded Forgejo issues through the mapped principal with `forgejo:issue:write`.
 - Lists and reads bounded wiki page metadata, and creates or updates wiki pages after exact-payload approval.
@@ -161,6 +163,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.1.4](docs/release-notes/1.1.4.md)
 - [Release Notes 1.1.3](docs/release-notes/1.1.3.md)
 - [Release Notes 1.1.2](docs/release-notes/1.1.2.md)
 - [Release Notes 1.1.0](docs/release-notes/1.1.0.md)

@@ -604,6 +604,14 @@ async fn create_pull_request_response(
         &decision,
         forgejo_status,
     );
+    let result = serde_json::json!({
+        "approval": approval,
+        "pull_request": pull_request_result.pull_request,
+        "resource_uri": pull_request_result.resource_uri,
+        "requested_reviewers": pull_request_result.requested_reviewers,
+        "reviewer_request_status": pull_request_result.reviewer_request_status,
+        "reviewer_request_error": pull_request_result.reviewer_request_error,
+    });
     (
         StatusCode::OK,
         Json(McpResponse {
@@ -621,10 +629,7 @@ async fn create_pull_request_response(
             approval_required: true,
             target: body.target,
             repository: None,
-            result: Some(serde_json::json!({
-                "approval": approval,
-                "pull_request": pull_request_result,
-            })),
+            result: Some(result),
             limit: None,
             next_cursor: None,
         }),

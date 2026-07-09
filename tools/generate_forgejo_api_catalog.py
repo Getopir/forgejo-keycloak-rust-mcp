@@ -20,12 +20,17 @@ HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head"}
 SEMANTIC_OVERLAY = {
     ("GET", "/repos/{owner}/{repo}"): "list_repository_metadata",
     ("GET", "/repos/{owner}/{repo}/issues"): "list_repository_issues",
+    ("POST", "/repos/{owner}/{repo}/issues"): "create_issue",
     ("POST", "/repos/{owner}/{repo}/issues/{index}/comments"): "create_issue_comment",
     ("GET", "/repos/{owner}/{repo}/pulls"): "list_pull_requests",
     ("POST", "/repos/{owner}/{repo}/pulls"): "create_pull_request",
     ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews"): "list_pull_request_reviews",
     ("GET", "/repos/{owner}/{repo}/releases"): "list_releases",
     ("POST", "/repos/{owner}/{repo}/releases"): "create_release",
+    ("GET", "/repos/{owner}/{repo}/wiki/pages"): "list_wiki_pages",
+    ("GET", "/repos/{owner}/{repo}/wiki/page/{pageName}"): "get_wiki_page",
+    ("POST", "/repos/{owner}/{repo}/wiki/new"): "create_wiki_page",
+    ("PATCH", "/repos/{owner}/{repo}/wiki/page/{pageName}"): "update_wiki_page",
     ("GET", "/notifications"): "list_notifications",
     ("POST", "/repos/{owner}/{repo}/pulls/{index}/merge"): "merge_pull_request",
 }

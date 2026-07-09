@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.1.3` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
+`1.1.4` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
 
 ## HTTP Surface
 
@@ -221,7 +221,7 @@ Examples:
 {"operation":"credential_reference_status"}
 ```
 
-`create_issue` and `create_issue_comment` are additive and still rely on Forgejo ACLs for the mapped user. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` are executable writes and require valid approval records created by different mapped principals.
+`create_issue` and `create_issue_comment` are additive and still rely on Forgejo ACLs for the mapped user. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` are executable writes and require valid approval records created by different mapped principals. Successful `create_pull_request` responses return the normalized PR directly at `result.pull_request`.
 
 Create pull-request dry-run preview:
 
@@ -262,6 +262,8 @@ Pull-request body fields:
 - Optional: `body`, `draft`, `assignee`, `assignees`, `reviewers`.
 
 Reviewer requests are a second Forgejo call after PR creation. If reviewer assignment fails, the response still returns the created pull request with `reviewer_request_status` and `reviewer_request_error`.
+
+After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, and `mergeable` are included when Forgejo returns them. If Forgejo returns a sparse create response, the gateway reads open PRs back from Forgejo by repo, head, base, and title. No successful response is returned without a PR number.
 
 ## Phase 3 Generated API Coverage
 

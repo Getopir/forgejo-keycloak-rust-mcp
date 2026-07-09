@@ -150,25 +150,60 @@ pub struct CreateIssueResult {
 
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoPullRequest {
-    number: u64,
-    title: String,
+    #[serde(default)]
+    number: Option<u64>,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
     state: Option<String>,
+    #[serde(default)]
     html_url: Option<String>,
+    #[serde(default)]
     draft: Option<bool>,
+    #[serde(default)]
     mergeable: Option<bool>,
+    #[serde(default)]
+    head: Option<ForgejoPullRequestBranch>,
+    #[serde(default)]
+    base: Option<ForgejoPullRequestBranch>,
+    #[serde(default)]
     created_at: Option<String>,
+    #[serde(default)]
     updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoPullRequestBranch {
+    #[serde(default, rename = "ref")]
+    ref_name: Option<String>,
+    #[serde(default)]
+    sha: Option<String>,
+    #[serde(default)]
+    label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestBranchSummary {
+    #[serde(rename = "ref")]
+    pub ref_name: Option<String>,
+    pub sha: Option<String>,
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PullRequestSummary {
     pub resource_uri: String,
     pub number: u64,
+    pub url: Option<String>,
     pub title: String,
     pub state: Option<String>,
     pub html_url: Option<String>,
     pub draft: Option<bool>,
     pub mergeable: Option<bool>,
+    pub head: Option<PullRequestBranchSummary>,
+    pub base: Option<PullRequestBranchSummary>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
@@ -411,6 +446,25 @@ pub enum ForgejoError {
     InvalidPullRequestOptions,
     #[error("pull request head, base, and title are required")]
     MissingPullRequestFields,
+    #[error(
+        "pull request creation succeeded but readback found no open PR for repo={repo} head={head} base={base} title={title}"
+    )]
+    PullRequestReadbackNoMatch {
+        repo: String,
+        head: String,
+        base: String,
+        title: String,
+    },
+    #[error(
+        "pull request creation readback is ambiguous for repo={repo} head={head} base={base} title={title}; candidates={candidates}"
+    )]
+    PullRequestReadbackAmbiguous {
+        repo: String,
+        head: String,
+        base: String,
+        title: String,
+        candidates: String,
+    },
     #[error("merge options body must be JSON when supplied")]
     InvalidMergeOptions,
     #[error("unsupported merge method")]
@@ -591,7 +645,7 @@ impl ForgejoClient {
             Page::new(
                 items
                     .into_iter()
-                    .map(|pull| PullRequestSummary::from_pull_request(pull, target))
+                    .filter_map(|pull| PullRequestSummary::from_pull_request(pull, target))
                     .collect(),
                 page,
             ),
@@ -623,11 +677,17 @@ impl ForgejoClient {
             let body = response.text().await.unwrap_or_default();
             return Err(ForgejoError::Api { status, body });
         }
-        let pull = response
-            .json::<ForgejoPullRequest>()
-            .await
-            .map_err(|err| ForgejoError::Request(err.to_string()))?;
-        let pull = PullRequestSummary::from_pull_request(pull, target);
+        let raw_body = response.text().await.unwrap_or_default();
+        let pull = match serde_json::from_str::<ForgejoPullRequest>(&raw_body)
+            .ok()
+            .and_then(|pull| PullRequestSummary::from_pull_request(pull, target))
+        {
+            Some(pull) => pull,
+            None => {
+                self.readback_created_pull_request(token, target, options)
+                    .await?
+            }
+        };
         let mut reviewer_request_status = None;
         let mut reviewer_request_error = None;
         if !options.reviewers.is_empty() {
@@ -659,6 +719,29 @@ impl ForgejoClient {
             },
             status.as_u16(),
         ))
+    }
+
+    async fn readback_created_pull_request(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        options: &CreatePullRequestOptions,
+    ) -> Result<PullRequestSummary, ForgejoError> {
+        let mut candidates = Vec::new();
+        let mut page = 1;
+        loop {
+            let (pulls, _) = self
+                .list_pull_requests(token, target, Some("open"), PageRequest { page, limit: 50 })
+                .await?;
+            let item_count = pulls.items.len();
+            let has_next = pulls.next_cursor.is_some();
+            candidates.extend(pulls.items);
+            if !has_next || item_count == 0 {
+                break;
+            }
+            page += 1;
+        }
+        select_created_pull_request(candidates, target, options)
     }
 
     pub async fn list_pull_request_reviews(
@@ -1241,6 +1324,10 @@ impl RepositoryTarget {
     pub fn resource_uri(&self) -> String {
         format!("forgejo://repository/{}/{}", self.owner, self.repo)
     }
+
+    pub fn full_name(&self) -> String {
+        format!("{}/{}", self.owner, self.repo)
+    }
 }
 
 impl NumberedTarget {
@@ -1316,6 +1403,111 @@ impl<T> Page<T> {
             next_cursor,
         }
     }
+}
+
+fn select_created_pull_request(
+    pulls: Vec<PullRequestSummary>,
+    target: &RepositoryTarget,
+    options: &CreatePullRequestOptions,
+) -> Result<PullRequestSummary, ForgejoError> {
+    let head = options.head.trim();
+    let base = options.base.trim();
+    let mut exact_branch_matches = pulls
+        .into_iter()
+        .filter(|pull| {
+            pull_branch_matches(pull.head.as_ref(), head)
+                && pull_branch_matches(pull.base.as_ref(), base)
+        })
+        .collect::<Vec<_>>();
+
+    match exact_branch_matches.len() {
+        0 => Err(readback_no_match(target, options)),
+        1 => Ok(exact_branch_matches.remove(0)),
+        _ => {
+            let mut title_matches = exact_branch_matches
+                .iter()
+                .filter(|pull| pull.title == options.title.trim())
+                .cloned()
+                .collect::<Vec<_>>();
+            match title_matches.len() {
+                1 => Ok(title_matches.remove(0)),
+                0 => Err(readback_ambiguous(target, options, &exact_branch_matches)),
+                _ => Err(readback_ambiguous(target, options, &title_matches)),
+            }
+        }
+    }
+}
+
+fn readback_no_match(
+    target: &RepositoryTarget,
+    options: &CreatePullRequestOptions,
+) -> ForgejoError {
+    ForgejoError::PullRequestReadbackNoMatch {
+        repo: target.full_name(),
+        head: options.head.trim().to_string(),
+        base: options.base.trim().to_string(),
+        title: options.title.trim().to_string(),
+    }
+}
+
+fn readback_ambiguous(
+    target: &RepositoryTarget,
+    options: &CreatePullRequestOptions,
+    candidates: &[PullRequestSummary],
+) -> ForgejoError {
+    ForgejoError::PullRequestReadbackAmbiguous {
+        repo: target.full_name(),
+        head: options.head.trim().to_string(),
+        base: options.base.trim().to_string(),
+        title: options.title.trim().to_string(),
+        candidates: candidates
+            .iter()
+            .map(|pull| {
+                format!(
+                    "#{} head={} base={} title={}",
+                    pull.number,
+                    branch_label(pull.head.as_ref()),
+                    branch_label(pull.base.as_ref()),
+                    pull.title
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("; "),
+    }
+}
+
+fn pull_branch_matches(branch: Option<&PullRequestBranchSummary>, expected: &str) -> bool {
+    let expected = expected.trim();
+    if expected.is_empty() {
+        return false;
+    }
+    branch.is_some_and(|branch| {
+        branch.ref_name.as_deref() == Some(expected)
+            || branch.label.as_deref() == Some(expected)
+            || branch
+                .label
+                .as_deref()
+                .and_then(|label| label.rsplit_once(':').map(|(_, name)| name))
+                == Some(expected)
+    })
+}
+
+fn branch_label(branch: Option<&PullRequestBranchSummary>) -> String {
+    branch
+        .and_then(|branch| {
+            branch
+                .label
+                .clone()
+                .or_else(|| branch.ref_name.clone())
+                .or_else(|| branch.sha.clone())
+        })
+        .unwrap_or_else(|| "<unknown>".to_string())
+}
+
+fn non_empty(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 fn parse_positive_number(value: &str) -> Result<u64, ForgejoError> {
@@ -1428,21 +1620,49 @@ impl WikiPageMetaSummary {
 }
 
 impl PullRequestSummary {
-    fn from_pull_request(value: ForgejoPullRequest, target: &RepositoryTarget) -> Self {
-        Self {
-            resource_uri: format!(
-                "forgejo://pull/{}/{}/{}",
-                target.owner, target.repo, value.number
-            ),
-            number: value.number,
-            title: value.title,
-            state: value.state,
-            html_url: value.html_url,
+    fn from_pull_request(value: ForgejoPullRequest, target: &RepositoryTarget) -> Option<Self> {
+        let number = value.number?;
+        let title = non_empty(value.title)?;
+        let state = non_empty(value.state)?;
+        let url = non_empty(value.url);
+        let html_url = non_empty(value.html_url);
+        if url.is_none() && html_url.is_none() {
+            return None;
+        }
+        Some(Self {
+            resource_uri: format!("forgejo://pull/{}/{}/{}", target.owner, target.repo, number),
+            number,
+            url,
+            title,
+            state: Some(state),
+            html_url,
             draft: value.draft,
             mergeable: value.mergeable,
+            head: value
+                .head
+                .and_then(PullRequestBranchSummary::from_forgejo_branch),
+            base: value
+                .base
+                .and_then(PullRequestBranchSummary::from_forgejo_branch),
             created_at: value.created_at,
             updated_at: value.updated_at,
+        })
+    }
+}
+
+impl PullRequestBranchSummary {
+    fn from_forgejo_branch(value: ForgejoPullRequestBranch) -> Option<Self> {
+        let ref_name = non_empty(value.ref_name);
+        let sha = non_empty(value.sha);
+        let label = non_empty(value.label);
+        if ref_name.is_none() && sha.is_none() && label.is_none() {
+            return None;
         }
+        Some(Self {
+            ref_name,
+            sha,
+            label,
+        })
     }
 }
 
@@ -1561,6 +1781,95 @@ mod tests {
     }
 
     #[test]
+    fn normal_create_pull_request_response_includes_number() {
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let pull = serde_json::from_value::<ForgejoPullRequest>(serde_json::json!({
+            "number": 42,
+            "url": "https://forgejo.example/api/v1/repos/rawholding/example/pulls/42",
+            "html_url": "https://forgejo.example/rawholding/example/pulls/42",
+            "title": "Add feature",
+            "state": "open",
+            "mergeable": true,
+            "head": { "ref": "feature", "sha": "abc123" },
+            "base": { "ref": "main", "sha": "def456" }
+        }))
+        .unwrap();
+        let pull = PullRequestSummary::from_pull_request(pull, &target).unwrap();
+
+        assert_eq!(pull.number, 42);
+        assert_eq!(
+            pull.html_url.as_deref(),
+            Some("https://forgejo.example/rawholding/example/pulls/42")
+        );
+        assert_eq!(pull.state.as_deref(), Some("open"));
+        assert_eq!(
+            pull.head.as_ref().and_then(|head| head.ref_name.as_deref()),
+            Some("feature")
+        );
+        assert_eq!(
+            pull.base.as_ref().and_then(|base| base.ref_name.as_deref()),
+            Some("main")
+        );
+        assert_eq!(pull.mergeable, Some(true));
+    }
+
+    #[test]
+    fn empty_create_pull_request_response_readback_finds_pr() {
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let options = create_pr_options();
+        let pull = serde_json::from_value::<ForgejoPullRequest>(serde_json::json!({})).unwrap();
+        assert!(PullRequestSummary::from_pull_request(pull, &target).is_none());
+
+        let pull = select_created_pull_request(
+            vec![pull_summary(7, "feature", "main", "Add feature")],
+            &target,
+            &options,
+        )
+        .unwrap();
+
+        assert_eq!(pull.number, 7);
+    }
+
+    #[test]
+    fn empty_create_pull_request_response_without_readback_match_fails_loudly() {
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let options = create_pr_options();
+        let err = select_created_pull_request(
+            vec![pull_summary(7, "other-feature", "main", "Add feature")],
+            &target,
+            &options,
+        )
+        .unwrap_err();
+        let message = err.to_string();
+
+        assert!(message.contains("readback found no open PR"));
+        assert!(message.contains("repo=rawholding/example"));
+        assert!(message.contains("head=feature"));
+        assert!(message.contains("base=main"));
+        assert!(message.contains("title=Add feature"));
+    }
+
+    #[test]
+    fn multiple_create_pull_request_readback_matches_fail_as_ambiguous() {
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let options = create_pr_options();
+        let err = select_created_pull_request(
+            vec![
+                pull_summary(7, "feature", "main", "Add feature"),
+                pull_summary(8, "feature", "main", "Add feature"),
+            ],
+            &target,
+            &options,
+        )
+        .unwrap_err();
+        let message = err.to_string();
+
+        assert!(message.contains("readback is ambiguous"));
+        assert!(message.contains("#7 head=feature base=main title=Add feature"));
+        assert!(message.contains("#8 head=feature base=main title=Add feature"));
+    }
+
+    #[test]
     fn parses_merge_options_from_json_body() {
         let options = MergePullRequestOptions::from_body(Some(
             r#"{"method":"squash","delete_branch_after_merge":true}"#,
@@ -1624,6 +1933,53 @@ mod tests {
                 .is_err()
         );
         assert!(CreatePullRequestOptions::from_body(None).is_err());
+    }
+
+    fn create_pr_options() -> CreatePullRequestOptions {
+        CreatePullRequestOptions {
+            head: "feature".to_string(),
+            base: "main".to_string(),
+            title: "Add feature".to_string(),
+            body: None,
+            draft: None,
+            assignee: None,
+            assignees: Vec::new(),
+            reviewers: Vec::new(),
+        }
+    }
+
+    fn pull_summary(
+        number: u64,
+        head: impl Into<String>,
+        base: impl Into<String>,
+        title: impl Into<String>,
+    ) -> PullRequestSummary {
+        PullRequestSummary {
+            resource_uri: format!("forgejo://pull/rawholding/example/{number}"),
+            number,
+            url: Some(format!(
+                "https://forgejo.example/api/v1/repos/rawholding/example/pulls/{number}"
+            )),
+            title: title.into(),
+            state: Some("open".to_string()),
+            html_url: Some(format!(
+                "https://forgejo.example/rawholding/example/pulls/{number}"
+            )),
+            draft: None,
+            mergeable: None,
+            head: Some(PullRequestBranchSummary {
+                ref_name: Some(head.into()),
+                sha: Some(format!("head-sha-{number}")),
+                label: None,
+            }),
+            base: Some(PullRequestBranchSummary {
+                ref_name: Some(base.into()),
+                sha: Some(format!("base-sha-{number}")),
+                label: None,
+            }),
+            created_at: None,
+            updated_at: None,
+        }
     }
 
     #[test]

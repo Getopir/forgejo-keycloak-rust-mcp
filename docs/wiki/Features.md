@@ -1,6 +1,6 @@
 # Features
 
-`1.1.3` is the issue, wiki, and credential-reference MCP expansion release of the Forgejo Keycloak Rust MCP gateway.
+`1.1.4` is the PR creation response contract patch release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -40,19 +40,25 @@
 Approval records are file-backed, short-lived, exact-payload-bound, single-use,
 and require different mapped principals for approval and execution.
 
-Executable high-risk tools in `1.1.0`:
+Executable high-risk tools in `1.1.4`:
 
 - `create_pull_request`
 - `merge_pull_request`
 - `create_release`
+- `create_wiki_page`
+- `update_wiki_page`
+
+`create_pull_request` returns a normalized PR directly at `result.pull_request`.
+If Forgejo returns a sparse create response, the gateway reads open PRs back by
+repo, head, base, and title before returning success.
 
 Admin and destructive execution remains disabled.
 
 ## Generated API Coverage
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and
-classifies all 491 operations. Only 10 reviewed semantic-overlay operations are
-executable. The other 481 are metadata-only and disabled.
+classifies all 491 operations. Only 15 reviewed semantic-overlay operations are
+exposed. The other 476 are metadata-only and disabled.
 
 Agents can inspect this safely:
 

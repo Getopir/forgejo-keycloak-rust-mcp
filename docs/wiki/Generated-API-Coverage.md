@@ -1,6 +1,6 @@
 # Generated API Coverage
 
-Version `1.1.0` pins the live Forgejo API metadata and classifies it before
+Version `1.1.4` pins the live Forgejo API metadata and classifies it before
 any generated endpoint can become an MCP tool.
 
 ## Pinned Source
@@ -13,13 +13,14 @@ any generated endpoint can become an MCP tool.
 ## Current Coverage
 
 - Total operations: 491
-- Semantic-overlay operations: 10
-- Disabled metadata-only operations: 481
+- Semantic-overlay operations: 15
+- Disabled metadata-only operations: 476
 
 The semantic overlay connects reviewed Forgejo endpoints to named MCP
 operations such as `list_repository_metadata`, `list_repository_issues`,
-`list_pull_requests`, `create_pull_request`, `list_releases`, `create_release`, and
-`merge_pull_request`.
+`create_issue`, `list_pull_requests`, `create_pull_request`, `list_releases`,
+`create_release`, `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`,
+`update_wiki_page`, and `merge_pull_request`.
 
 ## Safety Rule
 

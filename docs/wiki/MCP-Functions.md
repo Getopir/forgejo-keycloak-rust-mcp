@@ -39,7 +39,7 @@ Phase 2 baseline tools:
 - `create_issue`: additive issue creation for `owner/repository`.
 - `create_issue_comment`: additive issue or pull-request comment for `owner/repository#number`.
 - `list_pull_requests`: bounded pull-request summaries.
-- `create_pull_request`: approval-backed PR creation from a pushed branch, with optional assignee and reviewer request inputs.
+- `create_pull_request`: approval-backed PR creation from a pushed branch, with optional assignee and reviewer request inputs. Successful responses return the normalized PR at `result.pull_request`.
 - `list_pull_request_reviews`: bounded review summaries for `owner/repository#number`.
 - `list_releases`: bounded release summaries.
 - `list_notifications`: bounded notification summaries for the mapped Forgejo principal.
@@ -68,7 +68,7 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://notification/123`
 - `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.3` release supports additive issue creation, approval-backed pull-request creation, pull-request merge, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.4` release supports additive issue creation, approval-backed pull-request creation with normalized readback, pull-request merge, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 
@@ -78,6 +78,8 @@ PR creation body fields:
 - Optional: `body`, `draft`, `assignee`, `assignees`, `reviewers`.
 
 Reviewer requests are attempted after PR creation and reported separately as `reviewer_request_status` and `reviewer_request_error`.
+
+After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, and `mergeable` are included when Forgejo returns them. If Forgejo returns a sparse create response, the gateway reads open PRs back from Forgejo by repo, head, base, and title. No successful response is returned without a PR number.
 
 The optional `forgejo-mcpctl` binary wraps these operations from a shell while reading the bearer token from an environment variable rather than a command-line argument.
 
