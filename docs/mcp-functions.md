@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.1.4` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
+`1.2.0` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
 
 ## HTTP Surface
 
@@ -263,7 +263,7 @@ Pull-request body fields:
 
 Reviewer requests are a second Forgejo call after PR creation. If reviewer assignment fails, the response still returns the created pull request with `reviewer_request_status` and `reviewer_request_error`.
 
-After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, and `mergeable` are included when Forgejo returns them. If Forgejo returns a sparse create response, the gateway reads open PRs back from Forgejo by repo, head, base, and title. No successful response is returned without a PR number.
+After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, `mergeable`, `merged`, and `merge_commit_sha` are included when Forgejo returns them. `result.readback` persists the authoritative PR number, head SHA, state, merged state, merge commit SHA, combined check state, branch-ref existence, and stale classification. If Forgejo returns a sparse create response, the gateway first reads the PR back by base/head and then falls back to matching open PRs by repo, head, base, and title. No successful response is returned without a PR number.
 
 ## Phase 3 Generated API Coverage
 
@@ -335,7 +335,9 @@ Preview a merge without mutating Forgejo:
 }
 ```
 
-Merge options are JSON in the `body` field. Supported `method` values are `merge`, `squash`, `rebase`, and `rebase-merge`. Optional fields are `title`, `message`, `delete_branch_after_merge`, `force_merge`, and `head_commit_id`.
+Merge options are JSON in the `body` field. Supported `method` values are `merge`, `squash`, `rebase`, and `rebase-merge`. Optional fields are `title`, `message`, `delete_branch_after_merge`, `force_merge`, `head_commit_id`, `status_check_wait_seconds`, and `status_check_poll_seconds`.
+
+Before merge, the gateway reads back the PR by number and checks the head SHA combined status. If a required status is not green after the optional wait window, the error includes each non-success context with status and target/status URLs. If the PR is open but has no commits and no changed files ahead of base, the gateway comments on the PR, closes it as stale, and returns `result.stale_closed=true` plus the post-close readback instead of treating it as remaining unmerged work.
 
 Create a pull-request approval record:
 

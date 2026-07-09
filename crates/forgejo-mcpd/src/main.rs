@@ -384,6 +384,15 @@ async fn mcp_handler(
         .principal_mapper
         .as_ref()
         .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    info!(
+        request_id = %request_id,
+        operation = %body.operation,
+        actor = %principal.preferred_username.as_deref().unwrap_or(&principal.subject),
+        target = ?body.target,
+        pr_number = ?body.target.as_deref().and_then(pr_number_from_target),
+        dry_run = body.dry_run,
+        "mcp gateway request"
+    );
     if decision.allowed {
         match body.operation.as_str() {
             "create_release" => {
@@ -607,11 +616,23 @@ async fn create_pull_request_response(
     let result = serde_json::json!({
         "approval": approval,
         "pull_request": pull_request_result.pull_request,
+        "readback": pull_request_result.readback,
         "resource_uri": pull_request_result.resource_uri,
         "requested_reviewers": pull_request_result.requested_reviewers,
         "reviewer_request_status": pull_request_result.reviewer_request_status,
         "reviewer_request_error": pull_request_result.reviewer_request_error,
     });
+    log_gateway_readback(
+        request_id,
+        &body.operation,
+        body.target.as_deref(),
+        result
+            .get("pull_request")
+            .and_then(|pull| pull.get("number"))
+            .and_then(|number| number.as_u64()),
+        "create_pull_request",
+        result.get("readback"),
+    );
     (
         StatusCode::OK,
         Json(McpResponse {
@@ -761,9 +782,100 @@ async fn merge_pull_request_response(
             return error_response(StatusCode::FORBIDDEN, request_id, &err.to_string());
         }
     };
+    let (pre_merge_readback, _) = match access
+        .forgejo
+        .pull_request_readback(&access.token, &target)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return forgejo_error_response(request_id, "Forgejo pull-request readback failed", err);
+        }
+    };
+    if pre_merge_readback.stale.is_stale
+        && pre_merge_readback.state.as_deref() == Some("open")
+        && pre_merge_readback.merged != Some(true)
+    {
+        let (closed_readback, forgejo_status) = match access
+            .forgejo
+            .close_stale_pull_request(&access.token, &target)
+            .await
+        {
+            Ok(result) => result,
+            Err(err) => {
+                audit_decision(
+                    request_id,
+                    &principal,
+                    Some(&access.mapping),
+                    &body,
+                    &decision,
+                    AuditDecision::Deny,
+                    None,
+                );
+                return forgejo_error_response(
+                    request_id,
+                    "Forgejo stale pull-request close failed",
+                    err,
+                );
+            }
+        };
+        audit_success(
+            request_id,
+            &principal,
+            &access.mapping,
+            &body,
+            &decision,
+            forgejo_status,
+        );
+        let result = serde_json::json!({
+            "approval": approval,
+            "stale_closed": true,
+            "readback": closed_readback,
+        });
+        log_gateway_readback(
+            request_id,
+            &body.operation,
+            body.target.as_deref(),
+            Some(target.number),
+            "close_stale_pull_request",
+            result.get("readback"),
+        );
+        return (
+            StatusCode::OK,
+            Json(McpResponse {
+                request_id,
+                subject: principal.subject,
+                oauth_client: principal.oauth_client,
+                preferred_username: principal.preferred_username,
+                forgejo_login: Some(access.mapping.forgejo_login.clone()),
+                forgejo_user_id: access.mapping.forgejo_user_id,
+                trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+                operation: body.operation.clone(),
+                allowed: true,
+                reason: "approval consumed and stale pull request closed because it has no diff ahead of base".to_string(),
+                required_scope: decision.required_scope.to_string(),
+                approval_required: true,
+                target: body.target,
+                repository: None,
+                result: Some(result),
+                limit: None,
+                next_cursor: None,
+            }),
+        )
+            .into_response();
+    }
     let (merge_result, forgejo_status) = match access
         .forgejo
-        .merge_pull_request(&access.token, &target, &options)
+        .merge_pull_request_with_readback(&access.token, &target, &options, &pre_merge_readback)
         .await
     {
         Ok(result) => result,
@@ -788,6 +900,19 @@ async fn merge_pull_request_response(
         &decision,
         forgejo_status,
     );
+    let result = serde_json::json!({
+        "approval": approval,
+        "pre_merge_readback": pre_merge_readback,
+        "merge": merge_result,
+    });
+    log_gateway_readback(
+        request_id,
+        &body.operation,
+        body.target.as_deref(),
+        Some(target.number),
+        "merge_pull_request",
+        result.get("merge").and_then(|merge| merge.get("readback")),
+    );
     (
         StatusCode::OK,
         Json(McpResponse {
@@ -805,10 +930,7 @@ async fn merge_pull_request_response(
             approval_required: true,
             target: body.target,
             repository: None,
-            result: Some(serde_json::json!({
-                "approval": approval,
-                "merge": merge_result,
-            })),
+            result: Some(result),
             limit: None,
             next_cursor: None,
         }),
@@ -2082,6 +2204,46 @@ fn parse_numbered_target(
     };
     NumberedTarget::parse(target)
         .map_err(|err| error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string()))
+}
+
+fn pr_number_from_target(target: &str) -> Option<u64> {
+    NumberedTarget::parse(target)
+        .ok()
+        .map(|target| target.number)
+}
+
+fn log_gateway_readback(
+    request_id: Uuid,
+    operation: &str,
+    target: Option<&str>,
+    pr_number: Option<u64>,
+    response_shape: &str,
+    readback: Option<&serde_json::Value>,
+) {
+    info!(
+        request_id = %request_id,
+        operation = %operation,
+        target = ?target,
+        pr_number = ?pr_number,
+        response_shape = response_shape,
+        readback_number = ?readback
+            .and_then(|value| value.get("number"))
+            .and_then(|value| value.as_u64()),
+        readback_state = ?readback
+            .and_then(|value| value.get("state"))
+            .and_then(|value| value.as_str()),
+        readback_merged = ?readback
+            .and_then(|value| value.get("merged"))
+            .and_then(|value| value.as_bool()),
+        branch_ref_exists = ?readback
+            .and_then(|value| value.get("branch_ref_exists"))
+            .and_then(|value| value.as_bool()),
+        stale = ?readback
+            .and_then(|value| value.get("stale"))
+            .and_then(|value| value.get("is_stale"))
+            .and_then(|value| value.as_bool()),
+        "mcp gateway readback"
+    );
 }
 
 fn forgejo_error_response(

@@ -159,6 +159,10 @@ struct MergePullRequestArgs {
     message: Option<String>,
     #[arg(long)]
     delete_branch_after_merge: bool,
+    #[arg(long)]
+    status_check_wait_seconds: Option<u64>,
+    #[arg(long)]
+    status_check_poll_seconds: Option<u64>,
 }
 
 #[derive(Debug, Parser)]
@@ -461,6 +465,8 @@ impl Command {
                     args.title,
                     args.message,
                     args.delete_branch_after_merge,
+                    args.status_check_wait_seconds,
+                    args.status_check_poll_seconds,
                 )),
                 approval_id: args.approval_id,
                 dry_run: args.dry_run,
@@ -555,6 +561,8 @@ fn merge_body(
     title: Option<String>,
     message: Option<String>,
     delete_branch_after_merge: bool,
+    status_check_wait_seconds: Option<u64>,
+    status_check_poll_seconds: Option<u64>,
 ) -> String {
     let mut value = serde_json::json!({ "method": method });
     if let Some(title) = title {
@@ -565,6 +573,12 @@ fn merge_body(
     }
     if delete_branch_after_merge {
         value["delete_branch_after_merge"] = serde_json::json!(true);
+    }
+    if let Some(wait) = status_check_wait_seconds {
+        value["status_check_wait_seconds"] = serde_json::json!(wait);
+    }
+    if let Some(poll) = status_check_poll_seconds {
+        value["status_check_poll_seconds"] = serde_json::json!(poll);
     }
     value.to_string()
 }

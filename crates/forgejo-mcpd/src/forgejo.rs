@@ -165,6 +165,10 @@ struct ForgejoPullRequest {
     #[serde(default)]
     mergeable: Option<bool>,
     #[serde(default)]
+    merged: Option<bool>,
+    #[serde(default)]
+    merge_commit_sha: Option<String>,
+    #[serde(default)]
     head: Option<ForgejoPullRequestBranch>,
     #[serde(default)]
     base: Option<ForgejoPullRequestBranch>,
@@ -172,6 +176,32 @@ struct ForgejoPullRequest {
     created_at: Option<String>,
     #[serde(default)]
     updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoCombinedStatus {
+    #[serde(default)]
+    sha: Option<String>,
+    #[serde(default)]
+    state: Option<String>,
+    #[serde(default)]
+    total_count: Option<i64>,
+    #[serde(default)]
+    statuses: Vec<ForgejoCommitStatus>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoCommitStatus {
+    #[serde(default)]
+    context: Option<String>,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    target_url: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -202,10 +232,52 @@ pub struct PullRequestSummary {
     pub html_url: Option<String>,
     pub draft: Option<bool>,
     pub mergeable: Option<bool>,
+    pub merged: Option<bool>,
+    pub merge_commit_sha: Option<String>,
     pub head: Option<PullRequestBranchSummary>,
     pub base: Option<PullRequestBranchSummary>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CommitStatusReadiness {
+    pub sha: String,
+    pub state: Option<String>,
+    pub total_count: Option<i64>,
+    pub statuses: Vec<CommitStatusSummary>,
+    pub failing_contexts: Vec<CommitStatusSummary>,
+    pub pending_contexts: Vec<CommitStatusSummary>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CommitStatusSummary {
+    pub context: Option<String>,
+    pub status: Option<String>,
+    pub target_url: Option<String>,
+    pub url: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestStaleClassification {
+    pub is_stale: bool,
+    pub reason: String,
+    pub commit_count: usize,
+    pub changed_file_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestReadback {
+    pub pull_request: PullRequestSummary,
+    pub number: u64,
+    pub head_sha: Option<String>,
+    pub state: Option<String>,
+    pub merged: Option<bool>,
+    pub merge_commit_sha: Option<String>,
+    pub required_check_state: Option<CommitStatusReadiness>,
+    pub branch_ref_exists: Option<bool>,
+    pub stale: PullRequestStaleClassification,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -229,6 +301,7 @@ pub struct CreatePullRequestOptions {
 pub struct CreatePullRequestResult {
     pub resource_uri: String,
     pub pull_request: PullRequestSummary,
+    pub readback: PullRequestReadback,
     pub requested_reviewers: Vec<String>,
     pub reviewer_request_status: Option<u16>,
     pub reviewer_request_error: Option<String>,
@@ -408,6 +481,10 @@ pub struct MergePullRequestOptions {
     pub force_merge: Option<bool>,
     #[serde(default)]
     pub head_commit_id: Option<String>,
+    #[serde(default)]
+    pub status_check_wait_seconds: Option<u64>,
+    #[serde(default)]
+    pub status_check_poll_seconds: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -416,6 +493,7 @@ pub struct MergePullRequestResult {
     pub merged: bool,
     pub method: String,
     pub forgejo_response: serde_json::Value,
+    pub readback: PullRequestReadback,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -465,6 +543,10 @@ pub enum ForgejoError {
         title: String,
         candidates: String,
     },
+    #[error("pull request #{number} is not stale: {reason}")]
+    PullRequestNotStale { number: u64, reason: String },
+    #[error("required checks did not pass for head {sha}: {contexts}")]
+    RequiredChecksFailed { sha: String, contexts: String },
     #[error("merge options body must be JSON when supplied")]
     InvalidMergeOptions,
     #[error("unsupported merge method")]
@@ -653,6 +735,47 @@ impl ForgejoClient {
         ))
     }
 
+    pub async fn get_pull_request(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+    ) -> Result<(PullRequestSummary, u16), ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let (pull, status) = self.get_json::<ForgejoPullRequest>(token, url, &[]).await?;
+        let pull =
+            PullRequestSummary::from_pull_request(pull, &target.repository).ok_or_else(|| {
+                ForgejoError::Request("Forgejo returned a sparse pull-request readback".to_string())
+            })?;
+        Ok((pull, status))
+    }
+
+    pub async fn get_pull_request_by_branch(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        base: &str,
+        head: &str,
+    ) -> Result<(PullRequestSummary, u16), ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/{}",
+            self.base_url,
+            target.owner,
+            target.repo,
+            percent_encode_path_segment(base),
+            percent_encode_path_segment(head)
+        );
+        let (pull, status) = self.get_json::<ForgejoPullRequest>(token, url, &[]).await?;
+        let pull = PullRequestSummary::from_pull_request(pull, target).ok_or_else(|| {
+            ForgejoError::Request(
+                "Forgejo returned a sparse pull-request branch readback".to_string(),
+            )
+        })?;
+        Ok((pull, status))
+    }
+
     pub async fn create_pull_request(
         &self,
         token: &str,
@@ -709,10 +832,15 @@ impl ForgejoClient {
                 reviewer_request_error = Some(review_response.text().await.unwrap_or_default());
             }
         }
+        let readback = self
+            .pull_request_readback_for_pull(token, target, pull)
+            .await?;
+        let pull = readback.pull_request.clone();
         Ok((
             CreatePullRequestResult {
                 resource_uri: pull.resource_uri.clone(),
                 pull_request: pull,
+                readback,
                 requested_reviewers: options.reviewers.clone(),
                 reviewer_request_status,
                 reviewer_request_error,
@@ -727,6 +855,14 @@ impl ForgejoClient {
         target: &RepositoryTarget,
         options: &CreatePullRequestOptions,
     ) -> Result<PullRequestSummary, ForgejoError> {
+        match self
+            .get_pull_request_by_branch(token, target, &options.base, &options.head)
+            .await
+        {
+            Ok((pull, _)) => return Ok(pull),
+            Err(ForgejoError::Api { status, .. }) if status == StatusCode::NOT_FOUND => {}
+            Err(_) => {}
+        }
         let mut candidates = Vec::new();
         let mut page = 1;
         loop {
@@ -742,6 +878,169 @@ impl ForgejoClient {
             page += 1;
         }
         select_created_pull_request(candidates, target, options)
+    }
+
+    pub async fn pull_request_readback(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+    ) -> Result<(PullRequestReadback, u16), ForgejoError> {
+        let (pull, status) = self.get_pull_request(token, target).await?;
+        let readback = self
+            .pull_request_readback_for_pull(token, &target.repository, pull)
+            .await?;
+        Ok((readback, status))
+    }
+
+    async fn pull_request_readback_for_pull(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        pull: PullRequestSummary,
+    ) -> Result<PullRequestReadback, ForgejoError> {
+        let numbered = NumberedTarget {
+            repository: target.clone(),
+            number: pull.number,
+        };
+        let head_sha = pull.head.as_ref().and_then(|head| head.sha.clone());
+        let branch_ref_exists = match pull
+            .head
+            .as_ref()
+            .and_then(|head| head.ref_name.as_deref())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            Some(branch) => Some(self.branch_exists(token, target, branch).await?),
+            None => None,
+        };
+        let required_check_state = match head_sha.as_deref() {
+            Some(sha) => self.combined_status(token, target, sha).await?,
+            None => None,
+        };
+        let commit_count = self.pull_request_commit_count(token, &numbered).await?;
+        let changed_file_count = self
+            .pull_request_changed_file_count(token, &numbered)
+            .await?;
+        let no_diff_ahead = commit_count == 0 && changed_file_count == 0;
+        let stale = PullRequestStaleClassification {
+            is_stale: no_diff_ahead,
+            reason: if no_diff_ahead {
+                "no commits or changed files ahead of base".to_string()
+            } else {
+                "pull request has commits or changed files ahead of base".to_string()
+            },
+            commit_count,
+            changed_file_count,
+        };
+        Ok(PullRequestReadback {
+            number: pull.number,
+            head_sha,
+            state: pull.state.clone(),
+            merged: pull.merged,
+            merge_commit_sha: pull.merge_commit_sha.clone(),
+            required_check_state,
+            branch_ref_exists,
+            stale,
+            pull_request: pull,
+        })
+    }
+
+    async fn combined_status(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        sha: &str,
+    ) -> Result<Option<CommitStatusReadiness>, ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/commits/{}/status",
+            self.base_url,
+            target.owner,
+            target.repo,
+            percent_encode_path_segment(sha)
+        );
+        let Some((status, _)) = self
+            .get_json_optional::<ForgejoCombinedStatus>(token, url, &[])
+            .await?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(CommitStatusReadiness::from_combined_status(
+            status, sha,
+        )))
+    }
+
+    async fn branch_exists(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        branch: &str,
+    ) -> Result<bool, ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/branches/{}",
+            self.base_url,
+            target.owner,
+            target.repo,
+            percent_encode_path_segment(branch)
+        );
+        Ok(self
+            .get_json_optional::<serde_json::Value>(token, url, &[])
+            .await?
+            .is_some())
+    }
+
+    async fn pull_request_commit_count(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+    ) -> Result<usize, ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/commits",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        self.count_paged::<serde_json::Value>(
+            token,
+            url,
+            vec![
+                ("verification", "false".to_string()),
+                ("files", "false".to_string()),
+            ],
+        )
+        .await
+    }
+
+    async fn pull_request_changed_file_count(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+    ) -> Result<usize, ForgejoError> {
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/files",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        self.count_paged::<serde_json::Value>(token, url, Vec::new())
+            .await
+    }
+
+    async fn count_paged<T: for<'de> Deserialize<'de>>(
+        &self,
+        token: &str,
+        url: String,
+        extra_query: Vec<(&'static str, String)>,
+    ) -> Result<usize, ForgejoError> {
+        let mut count = 0usize;
+        let mut page = 1u32;
+        let limit = 100u32;
+        loop {
+            let mut query = vec![("page", page.to_string()), ("limit", limit.to_string())];
+            query.extend(extra_query.iter().cloned());
+            let (items, _) = self.get_json::<Vec<T>>(token, url.clone(), &query).await?;
+            let item_count = items.len();
+            count = count.saturating_add(item_count);
+            if item_count < limit as usize {
+                return Ok(count);
+            }
+            page += 1;
+        }
     }
 
     pub async fn list_pull_request_reviews(
@@ -965,13 +1264,16 @@ impl ForgejoClient {
         Ok((WikiPageSummary::from_page(page, target), status.as_u16()))
     }
 
-    pub async fn merge_pull_request(
+    pub async fn merge_pull_request_with_readback(
         &self,
         token: &str,
         target: &NumberedTarget,
         options: &MergePullRequestOptions,
+        readback: &PullRequestReadback,
     ) -> Result<(MergePullRequestResult, u16), ForgejoError> {
         options.validate()?;
+        self.wait_for_merge_checks(token, &target.repository, readback, options)
+            .await?;
         let url = format!(
             "{}/api/v1/repos/{}/{}/pulls/{}/merge",
             self.base_url, target.repository.owner, target.repository.repo, target.number
@@ -994,6 +1296,7 @@ impl ForgejoClient {
         } else {
             serde_json::from_str(&body).unwrap_or_else(|_| serde_json::json!({ "body": body }))
         };
+        let (post_merge_readback, _) = self.pull_request_readback(token, target).await?;
         Ok((
             MergePullRequestResult {
                 resource_uri: format!(
@@ -1003,9 +1306,81 @@ impl ForgejoClient {
                 merged: true,
                 method: options.method.clone(),
                 forgejo_response,
+                readback: post_merge_readback,
             },
             status.as_u16(),
         ))
+    }
+
+    pub async fn close_stale_pull_request(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+    ) -> Result<(PullRequestReadback, u16), ForgejoError> {
+        let (readback, _) = self.pull_request_readback(token, target).await?;
+        if !readback.stale.is_stale {
+            return Err(ForgejoError::PullRequestNotStale {
+                number: target.number,
+                reason: readback.stale.reason,
+            });
+        }
+        let comment = format!(
+            "Closing stale PR #{number}: no commits or diff are ahead of the base branch. head_sha={head_sha} branch_ref_exists={branch_ref_exists:?}",
+            number = target.number,
+            head_sha = readback.head_sha.as_deref().unwrap_or("unknown"),
+            branch_ref_exists = readback.branch_ref_exists,
+        );
+        self.create_issue_comment(token, target, &comment).await?;
+        let url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let response = self
+            .http
+            .patch(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&serde_json::json!({ "state": "closed" }))
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let (closed_readback, _) = self.pull_request_readback(token, target).await?;
+        Ok((closed_readback, status.as_u16()))
+    }
+
+    async fn wait_for_merge_checks(
+        &self,
+        token: &str,
+        target: &RepositoryTarget,
+        readback: &PullRequestReadback,
+        options: &MergePullRequestOptions,
+    ) -> Result<(), ForgejoError> {
+        let Some(head_sha) = readback.head_sha.as_deref() else {
+            return Ok(());
+        };
+        let wait_seconds = options.status_check_wait_seconds.unwrap_or(0);
+        let poll_seconds = options.status_check_poll_seconds.unwrap_or(5).max(1);
+        let started = std::time::Instant::now();
+        loop {
+            let readiness = self.combined_status(token, target, head_sha).await?;
+            let Some(readiness) = readiness else {
+                return Ok(());
+            };
+            if readiness.is_success() {
+                return Ok(());
+            }
+            if started.elapsed().as_secs() >= wait_seconds {
+                return Err(ForgejoError::RequiredChecksFailed {
+                    sha: head_sha.to_string(),
+                    contexts: readiness.context_report(),
+                });
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(poll_seconds)).await;
+        }
     }
 
     async fn get_json<T: for<'de> Deserialize<'de>>(
@@ -1032,6 +1407,35 @@ impl ForgejoClient {
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
         Ok((value, status.as_u16()))
+    }
+
+    async fn get_json_optional<T: for<'de> Deserialize<'de>>(
+        &self,
+        token: &str,
+        url: String,
+        query: &[(&'static str, String)],
+    ) -> Result<Option<(T, u16)>, ForgejoError> {
+        let response = self
+            .http
+            .get(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .query(query)
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if status == StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let value = response
+            .json::<T>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        Ok(Some((value, status.as_u16())))
     }
 }
 
@@ -1251,6 +1655,8 @@ impl Default for MergePullRequestOptions {
             delete_branch_after_merge: None,
             force_merge: None,
             head_commit_id: None,
+            status_check_wait_seconds: None,
+            status_check_poll_seconds: None,
         }
     }
 }
@@ -1402,6 +1808,92 @@ impl<T> Page<T> {
             limit: request.limit,
             next_cursor,
         }
+    }
+}
+
+impl CommitStatusReadiness {
+    fn from_combined_status(value: ForgejoCombinedStatus, fallback_sha: &str) -> Self {
+        let statuses = value
+            .statuses
+            .into_iter()
+            .map(CommitStatusSummary::from_status)
+            .collect::<Vec<_>>();
+        let failing_contexts = statuses
+            .iter()
+            .filter(|status| status.is_failure())
+            .cloned()
+            .collect::<Vec<_>>();
+        let pending_contexts = statuses
+            .iter()
+            .filter(|status| status.is_pending())
+            .cloned()
+            .collect::<Vec<_>>();
+        Self {
+            sha: value.sha.unwrap_or_else(|| fallback_sha.to_string()),
+            state: value.state,
+            total_count: value.total_count,
+            statuses,
+            failing_contexts,
+            pending_contexts,
+        }
+    }
+
+    fn is_success(&self) -> bool {
+        self.state.as_deref() == Some("success")
+            && self.failing_contexts.is_empty()
+            && self.pending_contexts.is_empty()
+    }
+
+    fn context_report(&self) -> String {
+        let report = self
+            .statuses
+            .iter()
+            .filter(|status| !status.is_success())
+            .map(CommitStatusSummary::report)
+            .collect::<Vec<_>>();
+        if report.is_empty() {
+            format!(
+                "combined_state={}",
+                self.state.as_deref().unwrap_or("unknown")
+            )
+        } else {
+            report.join("; ")
+        }
+    }
+}
+
+impl CommitStatusSummary {
+    fn from_status(value: ForgejoCommitStatus) -> Self {
+        Self {
+            context: non_empty(value.context),
+            status: non_empty(value.status),
+            target_url: non_empty(value.target_url),
+            url: non_empty(value.url),
+            description: non_empty(value.description),
+        }
+    }
+
+    fn is_success(&self) -> bool {
+        self.status.as_deref() == Some("success")
+    }
+
+    fn is_failure(&self) -> bool {
+        matches!(self.status.as_deref(), Some("error" | "failure"))
+    }
+
+    fn is_pending(&self) -> bool {
+        !self.is_success() && !self.is_failure()
+    }
+
+    fn report(&self) -> String {
+        format!(
+            "context={} status={} target_url={} status_url={} description={}",
+            self.context.as_deref().unwrap_or("unknown"),
+            self.status.as_deref().unwrap_or("unknown"),
+            self.target_url.as_deref().unwrap_or("none"),
+            self.url.as_deref().unwrap_or("none"),
+            self.description.as_deref().unwrap_or("")
+        )
     }
 }
 
@@ -1638,6 +2130,8 @@ impl PullRequestSummary {
             html_url,
             draft: value.draft,
             mergeable: value.mergeable,
+            merged: value.merged,
+            merge_commit_sha: non_empty(value.merge_commit_sha),
             head: value
                 .head
                 .and_then(PullRequestBranchSummary::from_forgejo_branch),
@@ -1967,6 +2461,8 @@ mod tests {
             )),
             draft: None,
             mergeable: None,
+            merged: Some(false),
+            merge_commit_sha: None,
             head: Some(PullRequestBranchSummary {
                 ref_name: Some(head.into()),
                 sha: Some(format!("head-sha-{number}")),

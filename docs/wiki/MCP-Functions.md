@@ -68,7 +68,7 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://notification/123`
 - `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.1.4` release supports additive issue creation, approval-backed pull-request creation with normalized readback, pull-request merge, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.2.0` release supports additive issue creation, approval-backed pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 
@@ -79,7 +79,9 @@ PR creation body fields:
 
 Reviewer requests are attempted after PR creation and reported separately as `reviewer_request_status` and `reviewer_request_error`.
 
-After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, and `mergeable` are included when Forgejo returns them. If Forgejo returns a sparse create response, the gateway reads open PRs back from Forgejo by repo, head, base, and title. No successful response is returned without a PR number.
+After execution, `result.pull_request` always contains a normalized PR object with `number`, `state`, `title`, and `url` or `html_url`. Head/base `ref`, `sha`, `label`, `mergeable`, `merged`, and `merge_commit_sha` are included when Forgejo returns them. `result.readback` persists the PR number, head SHA, state, merged state, merge commit SHA, combined check state, branch-ref existence, and stale classification. Sparse create responses trigger base/head readback before list-based matching. No successful response is returned without a PR number.
+
+Before merge, the gateway reads the PR back by number and checks the head SHA status. Non-green check failures include exact context, status, and URLs. Open PRs with no commits and no changed files ahead of base are commented and closed as stale instead of reported as unfinished work.
 
 The optional `forgejo-mcpctl` binary wraps these operations from a shell while reading the bearer token from an environment variable rather than a command-line argument.
 

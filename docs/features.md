@@ -1,6 +1,6 @@
 # Features
 
-`1.1.4` is the PR creation response contract patch release of the Forgejo Keycloak Rust MCP gateway.
+`1.2.0` is the PR/source-authority hygiene release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -53,13 +53,13 @@ High-risk operations use file-backed, single-use approval records:
 - executor and approver must be different mapped principals;
 - approvals are consumed before Forgejo mutation calls.
 
-`create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` are executable after approval and Forgejo ACL checks. Successful `create_pull_request` responses return a normalized PR directly at `result.pull_request`; sparse Forgejo create responses trigger authoritative open-PR readback. Destructive and admin execution remains disabled.
+`create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` are executable after approval and Forgejo ACL checks. Successful `create_pull_request` responses return a normalized PR directly at `result.pull_request` and a richer `result.readback`; sparse Forgejo create responses trigger authoritative base/head or open-PR readback. Merge reads back the PR by number, reports exact failing check contexts, and closes open no-diff PRs as stale with a comment. Destructive and admin execution remains disabled.
 
 ## Generated API Coverage
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and classifies all 491 operations by target type, risk, approval requirement, and exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.1.4`, 15 operations are exposed through the semantic overlay and 476 remain disabled.
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.2.0`, 15 operations are exposed through the semantic overlay and 476 remain disabled.
 
 ## CLI
 

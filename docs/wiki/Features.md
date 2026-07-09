@@ -1,6 +1,6 @@
 # Features
 
-`1.1.4` is the PR creation response contract patch release of the Forgejo Keycloak Rust MCP gateway.
+`1.2.0` is the PR/source-authority hygiene release of the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -40,7 +40,7 @@
 Approval records are file-backed, short-lived, exact-payload-bound, single-use,
 and require different mapped principals for approval and execution.
 
-Executable high-risk tools in `1.1.4`:
+Executable high-risk tools in `1.2.0`:
 
 - `create_pull_request`
 - `merge_pull_request`
@@ -48,9 +48,11 @@ Executable high-risk tools in `1.1.4`:
 - `create_wiki_page`
 - `update_wiki_page`
 
-`create_pull_request` returns a normalized PR directly at `result.pull_request`.
-If Forgejo returns a sparse create response, the gateway reads open PRs back by
-repo, head, base, and title before returning success.
+`create_pull_request` returns a normalized PR directly at `result.pull_request`
+and a richer `result.readback`. If Forgejo returns a sparse create response,
+the gateway reads by base/head and then by open PR list before returning
+success. Merge reads back the PR by number, reports exact failing check
+contexts, and closes open no-diff PRs as stale with a comment.
 
 Admin and destructive execution remains disabled.
 
