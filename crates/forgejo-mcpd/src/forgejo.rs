@@ -327,6 +327,45 @@ pub struct PullRequestReviewSummary {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+struct ForgejoPullRequestChangedFile {
+    filename: String,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    additions: Option<u64>,
+    #[serde(default)]
+    deletions: Option<u64>,
+    #[serde(default)]
+    changes: Option<u64>,
+    #[serde(default)]
+    previous_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestChangedFileSummary {
+    pub filename: String,
+    pub status: Option<String>,
+    pub additions: u64,
+    pub deletions: u64,
+    pub changes: u64,
+    pub previous_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestDiffSummary {
+    pub resource_uri: String,
+    pub pull_request: PullRequestSummary,
+    pub file_count: usize,
+    pub returned_file_count: usize,
+    pub files_truncated: bool,
+    pub files: Vec<PullRequestChangedFileSummary>,
+    pub diff: String,
+    pub diff_bytes: usize,
+    pub diff_total_bytes: usize,
+    pub diff_truncated: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 struct ForgejoRelease {
     id: i64,
     tag_name: String,
@@ -1066,6 +1105,72 @@ impl ForgejoClient {
                 page,
             ),
             status,
+        ))
+    }
+
+    pub async fn get_pull_request_diff(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+        max_files: u32,
+        max_diff_bytes: usize,
+    ) -> Result<(PullRequestDiffSummary, u16), ForgejoError> {
+        let (pull_request, _) = self.get_pull_request(token, target).await?;
+        let files_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/files",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let files_query = vec![("page", "1".to_string()), ("limit", max_files.to_string())];
+        let (raw_files, _) = self
+            .get_json::<Vec<ForgejoPullRequestChangedFile>>(token, files_url, &files_query)
+            .await?;
+        let files = raw_files
+            .into_iter()
+            .map(PullRequestChangedFileSummary::from_changed_file)
+            .collect::<Vec<_>>();
+
+        let diff_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}.diff",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let response = self
+            .http
+            .get(diff_url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .header(reqwest::header::ACCEPT, "text/plain")
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let raw_diff = response
+            .bytes()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let diff_total_bytes = raw_diff.len();
+        let diff = bounded_utf8(&raw_diff, max_diff_bytes.max(1));
+        let diff_bytes = diff.len();
+        let file_count = files.len();
+        Ok((
+            PullRequestDiffSummary {
+                resource_uri: format!(
+                    "forgejo://pull/{}/{}/{}#diff",
+                    target.repository.owner, target.repository.repo, target.number
+                ),
+                pull_request,
+                file_count,
+                returned_file_count: file_count,
+                files_truncated: file_count >= max_files as usize,
+                files,
+                diff,
+                diff_bytes,
+                diff_total_bytes,
+                diff_truncated: diff_total_bytes > max_diff_bytes.max(1),
+            },
+            status.as_u16(),
         ))
     }
 
@@ -2144,6 +2249,33 @@ impl PullRequestSummary {
     }
 }
 
+impl PullRequestChangedFileSummary {
+    fn from_changed_file(file: ForgejoPullRequestChangedFile) -> Self {
+        let additions = file.additions.unwrap_or_default();
+        let deletions = file.deletions.unwrap_or_default();
+        Self {
+            filename: file.filename,
+            status: file.status,
+            additions,
+            deletions,
+            changes: file.changes.unwrap_or(additions.saturating_add(deletions)),
+            previous_filename: file.previous_filename,
+        }
+    }
+}
+
+fn bounded_utf8(bytes: &[u8], max_bytes: usize) -> String {
+    let decoded = String::from_utf8_lossy(bytes);
+    if decoded.len() <= max_bytes {
+        return decoded.into_owned();
+    }
+    let mut end = max_bytes;
+    while end > 0 && !decoded.is_char_boundary(end) {
+        end -= 1;
+    }
+    decoded[..end].to_string()
+}
+
 impl PullRequestBranchSummary {
     fn from_forgejo_branch(value: ForgejoPullRequestBranch) -> Option<Self> {
         let ref_name = non_empty(value.ref_name);
@@ -2272,6 +2404,31 @@ mod tests {
         assert_eq!(request.page, 3);
         assert_eq!(request.limit, 50);
         assert!(PageRequest::from_cursor(Some("0"), None, 50).is_err());
+    }
+
+    #[test]
+    fn bounds_pull_request_diff_on_a_utf8_boundary() {
+        let text = "diff --git a/å b/å\n";
+        let bounded = bounded_utf8(text.as_bytes(), 20);
+
+        assert!(bounded.len() <= 20);
+        assert!(bounded.is_char_boundary(bounded.len()));
+        assert!(text.starts_with(&bounded));
+    }
+
+    #[test]
+    fn maps_changed_file_without_leaking_unbounded_fields() {
+        let file = serde_json::from_value::<ForgejoPullRequestChangedFile>(serde_json::json!({
+            "filename": "src/lib.rs",
+            "status": "modified",
+            "additions": 3,
+            "deletions": 2
+        }))
+        .unwrap();
+        let summary = PullRequestChangedFileSummary::from_changed_file(file);
+
+        assert_eq!(summary.filename, "src/lib.rs");
+        assert_eq!(summary.changes, 5);
     }
 
     #[test]

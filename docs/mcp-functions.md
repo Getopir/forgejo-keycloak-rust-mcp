@@ -114,6 +114,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_pull_requests` | `forgejo:pr:read` | Read private | No | Lists bounded pull-request summaries for `owner/repository`. |
 | `create_pull_request` | `forgejo:pr:write` | Write mutating | Yes | Dry-run preview without approval, or approval-backed pull-request creation for `owner/repository`. Optional reviewer requests run after PR creation and are reported separately. |
 | `list_pull_request_reviews` | `forgejo:pr:read` | Read private | No | Lists bounded review summaries for `owner/repository#number`. |
+| `get_pull_request_diff` | `forgejo:pr:read` | Read private | No | Reads pull-request metadata, bounded changed-file summaries, and diff text for `owner/repository#number`. `limit` caps returned changed files at the server maximum; `FORGEJO_MCPD_MAX_DIFF_BYTES` caps diff text. |
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
 | `list_wiki_pages` | `forgejo:wiki:read` | Read private | No | Lists bounded wiki page metadata for `owner/repository`. |
@@ -174,6 +175,10 @@ Examples:
 
 ```json
 {"operation":"list_pull_request_reviews","target":"forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1","limit":25}
+```
+
+```json
+{"operation":"get_pull_request_diff","target":"forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1","limit":25}
 ```
 
 ```json

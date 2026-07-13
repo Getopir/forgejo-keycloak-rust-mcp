@@ -28,6 +28,7 @@
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
+- `get_pull_request_diff`
 - `list_releases`
 - `list_notifications`
 - `forgejo_api_coverage`

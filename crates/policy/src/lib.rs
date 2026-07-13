@@ -179,6 +179,13 @@ impl OperationRegistry {
                 description: "List bounded pull-request review summaries through mapped Forgejo identity.",
             },
             Operation {
+                name: "get_pull_request_diff",
+                scope: "forgejo:pr:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "Read bounded pull-request metadata, changed-file summaries, and diff text through mapped Forgejo identity.",
+            },
+            Operation {
                 name: "list_releases",
                 scope: "forgejo:release:read",
                 risk: RiskClass::ReadPrivate,
@@ -563,6 +570,7 @@ fn semantic_operation(method: &str, path: &str) -> Option<&'static str> {
         ("GET", "/repos/{owner}/{repo}/pulls") => Some("list_pull_requests"),
         ("POST", "/repos/{owner}/{repo}/pulls") => Some("create_pull_request"),
         ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews") => Some("list_pull_request_reviews"),
+        ("GET", "/repos/{owner}/{repo}/pulls/{index}.{diffType}") => Some("get_pull_request_diff"),
         ("GET", "/repos/{owner}/{repo}/releases") => Some("list_releases"),
         ("POST", "/repos/{owner}/{repo}/releases") => Some("create_release"),
         ("GET", "/repos/{owner}/{repo}/wiki/pages") => Some("list_wiki_pages"),
@@ -649,7 +657,7 @@ mod tests {
             .iter()
             .filter(|endpoint| endpoint.exposure == EndpointExposure::SemanticOverlay)
             .count();
-        assert_eq!(semantic, 15);
+        assert_eq!(semantic, 16);
         assert!(
             catalog
                 .endpoints

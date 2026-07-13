@@ -60,6 +60,8 @@ struct Args {
     trusted_full_name_header: Option<String>,
     #[arg(long, env = "FORGEJO_MCPD_MAX_PAGE_LIMIT", default_value_t = 50)]
     max_page_limit: u32,
+    #[arg(long, env = "FORGEJO_MCPD_MAX_DIFF_BYTES", default_value_t = 65_536)]
+    max_diff_bytes: usize,
     #[arg(long, env = "FORGEJO_MCPD_APPROVAL_STORE")]
     approval_store: Option<PathBuf>,
     #[arg(
@@ -80,6 +82,7 @@ struct AppState {
     forgejo: Option<ForgejoClient>,
     trusted_headers: TrustedHeaderConfig,
     max_page_limit: u32,
+    max_diff_bytes: usize,
     approval_store: Option<ApprovalStore>,
 }
 
@@ -206,6 +209,7 @@ async fn main() -> anyhow::Result<()> {
             args.trusted_full_name_header,
         ),
         max_page_limit: args.max_page_limit.max(1),
+        max_diff_bytes: args.max_diff_bytes.max(1),
         approval_store: args
             .approval_store
             .map(|path| ApprovalStore::new(path, args.approval_ttl_seconds)),
@@ -456,6 +460,10 @@ async fn mcp_handler(
             | "list_notifications"
             | "list_wiki_pages" => {
                 return phase2_list_response(request_id, state, principal, body, decision).await;
+            }
+            "get_pull_request_diff" => {
+                return pull_request_diff_response(request_id, state, principal, body, decision)
+                    .await;
             }
             "get_wiki_page" => {
                 return get_wiki_page_response(request_id, state, principal, body, decision).await;
@@ -1876,6 +1884,69 @@ async fn phase2_list_response(
             result: Some(response.0),
             limit: Some(page.limit),
             next_cursor,
+        }),
+    )
+        .into_response()
+}
+
+async fn pull_request_diff_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_numbered_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let max_files = body
+        .limit
+        .unwrap_or(state.max_page_limit)
+        .clamp(1, state.max_page_limit);
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let (diff, forgejo_status) = match access
+        .forgejo
+        .get_pull_request_diff(&access.token, &target, max_files, state.max_diff_bytes)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            return forgejo_error_response(request_id, "Forgejo pull-request diff failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "required scope present and bounded Forgejo pull-request diff returned"
+                .to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: decision.approval_required,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::to_value(diff).unwrap_or_default()),
+            limit: Some(max_files),
+            next_cursor: None,
         }),
     )
         .into_response()

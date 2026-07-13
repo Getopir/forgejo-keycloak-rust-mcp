@@ -7,6 +7,7 @@ Configure the daemon with these values:
 - MCP audience.
 - Public MCP resource URL.
 - Optional HTTPS guard: `--tls`, `--ssl`, or `FORGEJO_MCPD_TLS=true`.
+- Bounded PR review output: `FORGEJO_MCPD_MAX_DIFF_BYTES` caps `get_pull_request_diff` text at 65536 bytes by default.
 - Listen address.
 - Forgejo base URL for Forgejo-backed tools.
 - Principal map path.

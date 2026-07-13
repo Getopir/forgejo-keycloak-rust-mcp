@@ -30,6 +30,7 @@ enum Command {
     PullRequests(ListTargetArgs),
     CreatePullRequest(CreatePullRequestArgs),
     PullReviews(NumberedListArgs),
+    PullRequestDiff(DiffArgs),
     Releases(ListTargetArgs),
     WikiPages(NumberedListArgs),
     WikiPage(WikiPageReadArgs),
@@ -66,6 +67,13 @@ struct NumberedListArgs {
     limit: Option<u32>,
     #[arg(long)]
     cursor: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct DiffArgs {
+    target: String,
+    #[arg(long)]
+    limit: Option<u32>,
 }
 
 #[derive(Debug, Parser)]
@@ -361,6 +369,18 @@ impl Command {
                 args.limit,
                 args.cursor,
             ),
+            Command::PullRequestDiff(args) => McpRequest {
+                operation: "get_pull_request_diff",
+                requested_operation: None,
+                target: Some(args.target),
+                query: None,
+                limit: args.limit,
+                cursor: None,
+                state: None,
+                body: None,
+                approval_id: None,
+                dry_run: false,
+            },
             Command::Releases(args) => list_request(
                 "list_releases",
                 Some(args.target),
