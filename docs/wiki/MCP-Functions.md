@@ -18,6 +18,8 @@ The current release exposes:
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
+- `submit_pull_request_review`
+- `get_pull_request_diff`
 - `list_releases`
 - `list_notifications`
 - `list_wiki_pages`
@@ -41,6 +43,8 @@ Phase 2 baseline tools:
 - `list_pull_requests`: bounded pull-request summaries.
 - `create_pull_request`: approval-backed PR creation from a pushed branch, with optional assignee and reviewer request inputs. Successful responses return the normalized PR at `result.pull_request`.
 - `list_pull_request_reviews`: bounded review summaries for `owner/repository#number`.
+- `submit_pull_request_review`: submit an evidence-backed `APPROVED` or `REQUEST_CHANGES` review as the mapped reviewer identity; pass the review text in `body` and the verdict in `state`.
+- `get_pull_request_diff`: bounded pull-request metadata, changed-file summaries, and diff text for `owner/repository#number`.
 - `list_releases`: bounded release summaries.
 - `list_notifications`: bounded notification summaries for the mapped Forgejo principal.
 - `list_wiki_pages`: bounded wiki page metadata for `owner/repository`.

@@ -465,6 +465,12 @@ async fn mcp_handler(
                 return pull_request_diff_response(request_id, state, principal, body, decision)
                     .await;
             }
+            "submit_pull_request_review" => {
+                return submit_pull_request_review_response(
+                    request_id, state, principal, body, decision,
+                )
+                .await;
+            }
             "get_wiki_page" => {
                 return get_wiki_page_response(request_id, state, principal, body, decision).await;
             }
@@ -1946,6 +1952,72 @@ async fn pull_request_diff_response(
             repository: None,
             result: Some(serde_json::to_value(diff).unwrap_or_default()),
             limit: Some(max_files),
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+async fn submit_pull_request_review_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let target = match parse_numbered_target(&body, request_id) {
+        Ok(target) => target,
+        Err(response) => return response,
+    };
+    let Some(review_body) = body.body.as_deref() else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            request_id,
+            &ForgejoError::MissingPullRequestReviewBody.to_string(),
+        );
+    };
+    let review_state = body.state.as_deref().unwrap_or("APPROVED");
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let (review, forgejo_status) = match access
+        .forgejo
+        .submit_pull_request_review(&access.token, &target, review_body, review_state)
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            return forgejo_error_response(request_id, "Forgejo review submission failed", err);
+        }
+    };
+    audit_success(
+        request_id,
+        &principal,
+        &access.mapping,
+        &body,
+        &decision,
+        forgejo_status,
+    );
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "required scope present and pull-request review submitted".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: decision.approval_required,
+            target: body.target,
+            repository: None,
+            result: Some(serde_json::to_value(review).unwrap_or_default()),
+            limit: None,
             next_cursor: None,
         }),
     )

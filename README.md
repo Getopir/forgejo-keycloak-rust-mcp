@@ -41,7 +41,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Executes read-only repository metadata lookup through Forgejo API using the mapped principal's configured token environment variable.
 - Builds trusted reverse-proxy identity headers from the mapped principal for deployments that use Forgejo reverse-proxy authentication.
 - Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
-- Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
+- Lists bounded issue, pull-request, pull-request review, release, and notification summaries, and submits evidence-backed PR reviews as the mapped reviewer identity.
 - Reads bounded pull-request metadata, changed-file summaries, and diff text for independent review without exposing a Forgejo token to the caller.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
 - Creates approval-backed pull requests and returns a normalized PR directly at `result.pull_request`.

@@ -28,6 +28,7 @@
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
+- `submit_pull_request_review`
 - `get_pull_request_diff`
 - `list_releases`
 - `list_notifications`
@@ -60,8 +61,8 @@ Admin and destructive execution remains disabled.
 ## Generated API Coverage
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and
-classifies all 491 operations. Only 15 reviewed semantic-overlay operations are
-exposed. The other 476 are metadata-only and disabled.
+classifies all 491 operations. The current semantic overlay covers 18 reviewed
+endpoints. The other 473 endpoints are metadata-only and disabled.
 
 Agents can inspect this safely:
 

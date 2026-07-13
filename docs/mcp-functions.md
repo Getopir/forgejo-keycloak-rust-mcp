@@ -2,6 +2,11 @@
 
 `1.2.0` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
 
+`submit_pull_request_review` records an evidence-backed `APPROVED` or
+`REQUEST_CHANGES` review as the mapped reviewer identity. It requires
+`forgejo:approval:grant`, never accepts a caller-supplied Forgejo token, and
+returns a bounded review summary for authoritative readback.
+
 ## HTTP Surface
 
 ### `GET /health`
@@ -68,6 +73,7 @@ Request:
   "limit": 25,
   "cursor": "2",
   "state": "open",
+  "body": "Evidence-backed review result",
   "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a",
   "dry_run": true
 }

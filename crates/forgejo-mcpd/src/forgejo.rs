@@ -326,6 +326,14 @@ pub struct PullRequestReviewSummary {
     pub submitted_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SubmitPullRequestReviewResult {
+    pub resource_uri: String,
+    pub review: PullRequestReviewSummary,
+    pub create_status: u16,
+    pub submit_status: Option<u16>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoPullRequestChangedFile {
     filename: String,
@@ -545,6 +553,12 @@ pub enum ForgejoError {
     InvalidCursor,
     #[error("issue comment body is required")]
     MissingCommentBody,
+    #[error("pull request review body is required")]
+    MissingPullRequestReviewBody,
+    #[error("pull request review state must be APPROVED or REQUEST_CHANGES")]
+    InvalidPullRequestReviewState,
+    #[error("pull request review readback state mismatch: expected {expected}, got {actual}")]
+    PullRequestReviewStateMismatch { expected: String, actual: String },
     #[error("issue options body must be JSON when supplied")]
     InvalidIssueOptions,
     #[error("issue title is required")]
@@ -1105,6 +1119,87 @@ impl ForgejoClient {
                 page,
             ),
             status,
+        ))
+    }
+
+    pub async fn submit_pull_request_review(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+        body: &str,
+        state: &str,
+    ) -> Result<(SubmitPullRequestReviewResult, u16), ForgejoError> {
+        if body.trim().is_empty() {
+            return Err(ForgejoError::MissingPullRequestReviewBody);
+        }
+        let event = normalized_pull_request_review_state(state)?;
+        let reviews_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/reviews",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let create_response = self
+            .http
+            .post(&reviews_url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&serde_json::json!({ "body": body }))
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let create_status = create_response.status();
+        if !create_status.is_success() {
+            let body = create_response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api {
+                status: create_status,
+                body,
+            });
+        }
+        let created = create_response
+            .json::<ForgejoPullRequestReview>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let (review, submit_status) = if created
+            .state
+            .as_deref()
+            .is_some_and(|value| value.eq_ignore_ascii_case("PENDING"))
+        {
+            let submit_url = format!("{reviews_url}/{}", created.id);
+            let submit_response = self
+                .http
+                .post(submit_url)
+                .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+                .json(&serde_json::json!({ "body": body, "event": event }))
+                .send()
+                .await
+                .map_err(|err| ForgejoError::Request(err.to_string()))?;
+            let status = submit_response.status();
+            if !status.is_success() {
+                let body = submit_response.text().await.unwrap_or_default();
+                return Err(ForgejoError::Api { status, body });
+            }
+            let review = submit_response
+                .json::<ForgejoPullRequestReview>()
+                .await
+                .map_err(|err| ForgejoError::Request(err.to_string()))?;
+            (review, Some(status.as_u16()))
+        } else {
+            (created, None)
+        };
+        let actual_state = review.state.as_deref().unwrap_or("<missing>");
+        if !actual_state.eq_ignore_ascii_case(event) {
+            return Err(ForgejoError::PullRequestReviewStateMismatch {
+                expected: event.to_string(),
+                actual: actual_state.to_string(),
+            });
+        }
+        let review = PullRequestReviewSummary::from_review(review, target);
+        Ok((
+            SubmitPullRequestReviewResult {
+                resource_uri: review.resource_uri.clone(),
+                review,
+                create_status: create_status.as_u16(),
+                submit_status,
+            },
+            submit_status.unwrap_or(create_status.as_u16()),
         ))
     }
 
@@ -2308,6 +2403,14 @@ impl PullRequestReviewSummary {
     }
 }
 
+fn normalized_pull_request_review_state(state: &str) -> Result<&'static str, ForgejoError> {
+    match state.trim().to_ascii_uppercase().as_str() {
+        "APPROVED" | "APPROVE" => Ok("APPROVED"),
+        "REQUEST_CHANGES" | "REQUEST_CHANGES_REQUIRED" => Ok("REQUEST_CHANGES"),
+        _ => Err(ForgejoError::InvalidPullRequestReviewState),
+    }
+}
+
 impl ReleaseSummary {
     fn from_release(value: ForgejoRelease, target: &RepositoryTarget) -> Self {
         let tag_name = value.tag_name;
@@ -2364,6 +2467,19 @@ impl IssueCommentSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn normalizes_supported_pull_request_review_states() {
+        assert_eq!(
+            normalized_pull_request_review_state("approve").unwrap(),
+            "APPROVED"
+        );
+        assert_eq!(
+            normalized_pull_request_review_state("REQUEST_CHANGES_REQUIRED").unwrap(),
+            "REQUEST_CHANGES"
+        );
+        assert!(normalized_pull_request_review_state("comment").is_err());
+    }
 
     #[test]
     fn parses_owner_repo_target() {

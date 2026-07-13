@@ -179,6 +179,13 @@ impl OperationRegistry {
                 description: "List bounded pull-request review summaries through mapped Forgejo identity.",
             },
             Operation {
+                name: "submit_pull_request_review",
+                scope: "forgejo:approval:grant",
+                risk: RiskClass::WriteMutating,
+                approval_required: false,
+                description: "Submit an evidence-backed pull-request review as the mapped reviewer identity.",
+            },
+            Operation {
                 name: "get_pull_request_diff",
                 scope: "forgejo:pr:read",
                 risk: RiskClass::ReadPrivate,
@@ -570,6 +577,12 @@ fn semantic_operation(method: &str, path: &str) -> Option<&'static str> {
         ("GET", "/repos/{owner}/{repo}/pulls") => Some("list_pull_requests"),
         ("POST", "/repos/{owner}/{repo}/pulls") => Some("create_pull_request"),
         ("GET", "/repos/{owner}/{repo}/pulls/{index}/reviews") => Some("list_pull_request_reviews"),
+        ("POST", "/repos/{owner}/{repo}/pulls/{index}/reviews") => {
+            Some("submit_pull_request_review")
+        }
+        ("POST", "/repos/{owner}/{repo}/pulls/{index}/reviews/{id}") => {
+            Some("submit_pull_request_review")
+        }
         ("GET", "/repos/{owner}/{repo}/pulls/{index}.{diffType}") => Some("get_pull_request_diff"),
         ("GET", "/repos/{owner}/{repo}/releases") => Some("list_releases"),
         ("POST", "/repos/{owner}/{repo}/releases") => Some("create_release"),
@@ -608,6 +621,24 @@ mod tests {
         assert!(!registry.decide("gateway_probe", &scopes).unwrap().allowed);
         scopes.insert("forgejo:repo:read".to_string());
         assert!(registry.decide("gateway_probe", &scopes).unwrap().allowed);
+    }
+
+    #[test]
+    fn pull_request_review_submission_is_monitor_approval_scoped() {
+        let registry = OperationRegistry::current();
+        let mut scopes = BTreeSet::new();
+        assert!(
+            !registry
+                .decide("submit_pull_request_review", &scopes)
+                .unwrap()
+                .allowed
+        );
+        scopes.insert("forgejo:approval:grant".to_string());
+        let decision = registry
+            .decide("submit_pull_request_review", &scopes)
+            .unwrap();
+        assert!(decision.allowed);
+        assert!(!decision.approval_required);
     }
 
     #[test]
@@ -657,7 +688,7 @@ mod tests {
             .iter()
             .filter(|endpoint| endpoint.exposure == EndpointExposure::SemanticOverlay)
             .count();
-        assert_eq!(semantic, 16);
+        assert_eq!(semantic, 18);
         assert!(
             catalog
                 .endpoints
