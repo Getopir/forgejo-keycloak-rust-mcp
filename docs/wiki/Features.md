@@ -1,6 +1,6 @@
 # Features
 
-`1.2.0` is the PR/source-authority hygiene release of the Forgejo Keycloak Rust MCP gateway.
+`1.2.1` adds bounded pull-request diff inspection and evidence-backed review submission to the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -42,7 +42,7 @@
 Approval records are file-backed, short-lived, exact-payload-bound, single-use,
 and require different mapped principals for approval and execution.
 
-Executable high-risk tools in `1.2.0`:
+Executable high-risk tools in `1.2.1`:
 
 - `create_pull_request`
 - `merge_pull_request`

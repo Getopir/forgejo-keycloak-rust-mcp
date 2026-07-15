@@ -1,6 +1,6 @@
 # Generated API Coverage
 
-Version `1.2.0` pins the live Forgejo API metadata and classifies it before
+Version `1.2.1` pins the live Forgejo API metadata and classifies it before
 any generated endpoint can become an MCP tool.
 
 ## Pinned Source
