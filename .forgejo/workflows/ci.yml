@@ -11,6 +11,11 @@ jobs:
     container:
       image: rust:1.95
     steps:
+      - name: Install checkout runtime
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git nodejs
+          rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
       - name: Format
         run: cargo fmt --check
