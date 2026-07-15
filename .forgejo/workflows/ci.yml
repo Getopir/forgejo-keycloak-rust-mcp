@@ -39,4 +39,4 @@ jobs:
       - name: Enforce dependency policy
         run: cargo deny check
       - name: Generate SBOM
-        run: cargo cyclonedx --format json --output-file target/forgejo-keycloak-rust-mcp.cdx.json
+        run: cargo cyclonedx --format json
