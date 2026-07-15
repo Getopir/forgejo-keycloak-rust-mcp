@@ -8,7 +8,7 @@ Title: `v1.2.1 - bounded PR diff and review tools`
 
 - `get_pull_request_diff` returns bounded PR metadata, changed-file summaries, and diff text without exposing Forgejo credentials.
 - Server-side byte, file, line, and pagination caps keep review context predictable.
-- `create_pull_request_review` supports approve, request-changes, and comment reviews through the mapped Forgejo principal.
+- `submit_pull_request_review` supports approve and request-changes reviews through the mapped Forgejo principal.
 - Capability discovery, policy classification, CLI commands, tests, and documentation cover both tools.
 
 ## Install
