@@ -19,6 +19,7 @@ jobs:
           awk '/BEGIN CERTIFICATE/{n++} n==2{print} n==2 && /END CERTIFICATE/{exit}' /tmp/forgejo-chain.pem > /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt
           test "$(openssl x509 -in /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt -noout -fingerprint -sha256)" = "sha256 Fingerprint=3B:59:BD:00:12:79:D0:4D:A5:A0:B5:A4:75:87:1A:6A:47:70:09:C5:E7:78:6C:C4:AD:11:DC:4F:0B:10:E8:3C"
           update-ca-certificates
+          rustup component add rustfmt clippy
           rm -f /tmp/forgejo-chain.pem
           rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
