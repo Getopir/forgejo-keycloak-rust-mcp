@@ -17,6 +17,10 @@ jobs:
           apt-get install -y --no-install-recommends ca-certificates git nodejs
           rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
+        with:
+          # The runner reaches the canonical Forgejo service directly; public
+          # TLS termination is outside the job container's trust store.
+          github-server-url: ${{ vars.INTERNAL_GIT_URL }}
       - name: Format
         run: cargo fmt --check
       - name: Check
