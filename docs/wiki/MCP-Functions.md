@@ -18,6 +18,8 @@ The current release exposes:
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
+- `submit_pull_request_review`
+- `get_pull_request_diff`
 - `list_releases`
 - `list_notifications`
 - `list_wiki_pages`
@@ -41,6 +43,8 @@ Phase 2 baseline tools:
 - `list_pull_requests`: bounded pull-request summaries.
 - `create_pull_request`: approval-backed PR creation from a pushed branch, with optional assignee and reviewer request inputs. Successful responses return the normalized PR at `result.pull_request`.
 - `list_pull_request_reviews`: bounded review summaries for `owner/repository#number`.
+- `submit_pull_request_review`: submit an evidence-backed `APPROVED` or `REQUEST_CHANGES` review as the mapped reviewer identity; pass the review text in `body` and the verdict in `state`.
+- `get_pull_request_diff`: bounded pull-request metadata, changed-file summaries, and diff text for `owner/repository#number`.
 - `list_releases`: bounded release summaries.
 - `list_notifications`: bounded notification summaries for the mapped Forgejo principal.
 - `list_wiki_pages`: bounded wiki page metadata for `owner/repository`.
@@ -68,7 +72,7 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://notification/123`
 - `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.2.0` release supports additive issue creation, approval-backed pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.2.1` release supports bounded pull-request diff inspection, evidence-backed review submission, additive issue creation, approval-backed pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 

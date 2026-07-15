@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.2.0` means:
+Version `1.2.1` means:
 
 - `1`: first stable public release line.
 - `2`: PR/source-authority hygiene feature series.
-- `0`: first release in this feature series.
+- `1`: first patch release in this feature series.
 
 The governing rule is:
 
@@ -29,7 +29,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.2.0` is the PR/source-authority hygiene release of the hardened Forgejo Keycloak MCP gateway:
+`1.2.1` adds bounded pull-request diff inspection and evidence-backed review submission to the hardened Forgejo Keycloak MCP gateway:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -41,7 +41,8 @@ This project does not copy or translate GPL implementation code from other Forge
 - Executes read-only repository metadata lookup through Forgejo API using the mapped principal's configured token environment variable.
 - Builds trusted reverse-proxy identity headers from the mapped principal for deployments that use Forgejo reverse-proxy authentication.
 - Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
-- Lists bounded issue, pull-request, pull-request review, release, and notification summaries.
+- Lists bounded issue, pull-request, pull-request review, release, and notification summaries, and submits evidence-backed PR reviews as the mapped reviewer identity.
+- Reads bounded pull-request metadata, changed-file summaries, and diff text for independent review without exposing a Forgejo token to the caller.
 - Creates additive issue or pull-request comments through the mapped Forgejo principal.
 - Creates approval-backed pull requests and returns a normalized PR directly at `result.pull_request`.
 - Persists authoritative PR readback at `result.readback`, including PR number, head SHA, state, merged state, merge commit SHA, branch-ref existence, combined check state, and stale classification.
@@ -166,7 +167,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 1.2.0](docs/release-notes/1.2.0.md)
+- [Release Notes 1.2.1](docs/release-notes/1.2.1.md)
 - [Release Notes 1.1.4](docs/release-notes/1.1.4.md)
 - [Release Notes 1.1.3](docs/release-notes/1.1.3.md)
 - [Release Notes 1.1.2](docs/release-notes/1.1.2.md)

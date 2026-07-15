@@ -1,6 +1,11 @@
 # MCP Functions
 
-`1.2.0` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
+`1.2.1` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, executes bounded read operations, reads bounded pull-request diffs, submits evidence-backed pull-request reviews, supports additive issue creation and issue or pull-request comments, creates pull requests after approval with normalized readback, publishes wiki pages after approval, returns stable resource URIs, validates persistent approval records for high-risk gates, supports approval-backed pull-request merge and release creation, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
+
+`submit_pull_request_review` records an evidence-backed `APPROVED` or
+`REQUEST_CHANGES` review as the mapped reviewer identity. It requires
+`forgejo:approval:grant`, never accepts a caller-supplied Forgejo token, and
+returns a bounded review summary for authoritative readback.
 
 ## HTTP Surface
 
@@ -68,6 +73,7 @@ Request:
   "limit": 25,
   "cursor": "2",
   "state": "open",
+  "body": "Evidence-backed review result",
   "approval_id": "019f0c14-9f13-7e80-ae5f-5e3b82f5cc1a",
   "dry_run": true
 }
@@ -114,6 +120,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | `list_pull_requests` | `forgejo:pr:read` | Read private | No | Lists bounded pull-request summaries for `owner/repository`. |
 | `create_pull_request` | `forgejo:pr:write` | Write mutating | Yes | Dry-run preview without approval, or approval-backed pull-request creation for `owner/repository`. Optional reviewer requests run after PR creation and are reported separately. |
 | `list_pull_request_reviews` | `forgejo:pr:read` | Read private | No | Lists bounded review summaries for `owner/repository#number`. |
+| `get_pull_request_diff` | `forgejo:pr:read` | Read private | No | Reads pull-request metadata, bounded changed-file summaries, and diff text for `owner/repository#number`. `limit` caps returned changed files at the server maximum; `FORGEJO_MCPD_MAX_DIFF_BYTES` caps diff text. |
 | `list_releases` | `forgejo:release:read` | Read private | No | Lists bounded release summaries for `owner/repository`. |
 | `list_notifications` | `forgejo:notification:read` | Read private | No | Lists bounded notification summaries for the mapped Forgejo principal. |
 | `list_wiki_pages` | `forgejo:wiki:read` | Read private | No | Lists bounded wiki page metadata for `owner/repository`. |
@@ -174,6 +181,10 @@ Examples:
 
 ```json
 {"operation":"list_pull_request_reviews","target":"forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1","limit":25}
+```
+
+```json
+{"operation":"get_pull_request_diff","target":"forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1","limit":25}
 ```
 
 ```json

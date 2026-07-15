@@ -326,6 +326,53 @@ pub struct PullRequestReviewSummary {
     pub submitted_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SubmitPullRequestReviewResult {
+    pub resource_uri: String,
+    pub review: PullRequestReviewSummary,
+    pub create_status: u16,
+    pub submit_status: Option<u16>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoPullRequestChangedFile {
+    filename: String,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    additions: Option<u64>,
+    #[serde(default)]
+    deletions: Option<u64>,
+    #[serde(default)]
+    changes: Option<u64>,
+    #[serde(default)]
+    previous_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestChangedFileSummary {
+    pub filename: String,
+    pub status: Option<String>,
+    pub additions: u64,
+    pub deletions: u64,
+    pub changes: u64,
+    pub previous_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullRequestDiffSummary {
+    pub resource_uri: String,
+    pub pull_request: PullRequestSummary,
+    pub file_count: usize,
+    pub returned_file_count: usize,
+    pub files_truncated: bool,
+    pub files: Vec<PullRequestChangedFileSummary>,
+    pub diff: String,
+    pub diff_bytes: usize,
+    pub diff_total_bytes: usize,
+    pub diff_truncated: bool,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoRelease {
     id: i64,
@@ -506,6 +553,12 @@ pub enum ForgejoError {
     InvalidCursor,
     #[error("issue comment body is required")]
     MissingCommentBody,
+    #[error("pull request review body is required")]
+    MissingPullRequestReviewBody,
+    #[error("pull request review state must be APPROVED or REQUEST_CHANGES")]
+    InvalidPullRequestReviewState,
+    #[error("pull request review readback state mismatch: expected {expected}, got {actual}")]
+    PullRequestReviewStateMismatch { expected: String, actual: String },
     #[error("issue options body must be JSON when supplied")]
     InvalidIssueOptions,
     #[error("issue title is required")]
@@ -1066,6 +1119,153 @@ impl ForgejoClient {
                 page,
             ),
             status,
+        ))
+    }
+
+    pub async fn submit_pull_request_review(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+        body: &str,
+        state: &str,
+    ) -> Result<(SubmitPullRequestReviewResult, u16), ForgejoError> {
+        if body.trim().is_empty() {
+            return Err(ForgejoError::MissingPullRequestReviewBody);
+        }
+        let event = normalized_pull_request_review_state(state)?;
+        let reviews_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/reviews",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let create_response = self
+            .http
+            .post(&reviews_url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .json(&serde_json::json!({ "body": body }))
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let create_status = create_response.status();
+        if !create_status.is_success() {
+            let body = create_response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api {
+                status: create_status,
+                body,
+            });
+        }
+        let created = create_response
+            .json::<ForgejoPullRequestReview>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let (review, submit_status) = if created
+            .state
+            .as_deref()
+            .is_some_and(|value| value.eq_ignore_ascii_case("PENDING"))
+        {
+            let submit_url = format!("{reviews_url}/{}", created.id);
+            let submit_response = self
+                .http
+                .post(submit_url)
+                .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+                .json(&serde_json::json!({ "body": body, "event": event }))
+                .send()
+                .await
+                .map_err(|err| ForgejoError::Request(err.to_string()))?;
+            let status = submit_response.status();
+            if !status.is_success() {
+                let body = submit_response.text().await.unwrap_or_default();
+                return Err(ForgejoError::Api { status, body });
+            }
+            let review = submit_response
+                .json::<ForgejoPullRequestReview>()
+                .await
+                .map_err(|err| ForgejoError::Request(err.to_string()))?;
+            (review, Some(status.as_u16()))
+        } else {
+            (created, None)
+        };
+        let actual_state = review.state.as_deref().unwrap_or("<missing>");
+        if !actual_state.eq_ignore_ascii_case(event) {
+            return Err(ForgejoError::PullRequestReviewStateMismatch {
+                expected: event.to_string(),
+                actual: actual_state.to_string(),
+            });
+        }
+        let review = PullRequestReviewSummary::from_review(review, target);
+        Ok((
+            SubmitPullRequestReviewResult {
+                resource_uri: review.resource_uri.clone(),
+                review,
+                create_status: create_status.as_u16(),
+                submit_status,
+            },
+            submit_status.unwrap_or(create_status.as_u16()),
+        ))
+    }
+
+    pub async fn get_pull_request_diff(
+        &self,
+        token: &str,
+        target: &NumberedTarget,
+        max_files: u32,
+        max_diff_bytes: usize,
+    ) -> Result<(PullRequestDiffSummary, u16), ForgejoError> {
+        let (pull_request, _) = self.get_pull_request(token, target).await?;
+        let files_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}/files",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let files_query = vec![("page", "1".to_string()), ("limit", max_files.to_string())];
+        let (raw_files, _) = self
+            .get_json::<Vec<ForgejoPullRequestChangedFile>>(token, files_url, &files_query)
+            .await?;
+        let files = raw_files
+            .into_iter()
+            .map(PullRequestChangedFileSummary::from_changed_file)
+            .collect::<Vec<_>>();
+
+        let diff_url = format!(
+            "{}/api/v1/repos/{}/{}/pulls/{}.diff",
+            self.base_url, target.repository.owner, target.repository.repo, target.number
+        );
+        let response = self
+            .http
+            .get(diff_url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .header(reqwest::header::ACCEPT, "text/plain")
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let raw_diff = response
+            .bytes()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let diff_total_bytes = raw_diff.len();
+        let diff = bounded_utf8(&raw_diff, max_diff_bytes.max(1));
+        let diff_bytes = diff.len();
+        let file_count = files.len();
+        Ok((
+            PullRequestDiffSummary {
+                resource_uri: format!(
+                    "forgejo://pull/{}/{}/{}#diff",
+                    target.repository.owner, target.repository.repo, target.number
+                ),
+                pull_request,
+                file_count,
+                returned_file_count: file_count,
+                files_truncated: file_count >= max_files as usize,
+                files,
+                diff,
+                diff_bytes,
+                diff_total_bytes,
+                diff_truncated: diff_total_bytes > max_diff_bytes.max(1),
+            },
+            status.as_u16(),
         ))
     }
 
@@ -2144,6 +2344,33 @@ impl PullRequestSummary {
     }
 }
 
+impl PullRequestChangedFileSummary {
+    fn from_changed_file(file: ForgejoPullRequestChangedFile) -> Self {
+        let additions = file.additions.unwrap_or_default();
+        let deletions = file.deletions.unwrap_or_default();
+        Self {
+            filename: file.filename,
+            status: file.status,
+            additions,
+            deletions,
+            changes: file.changes.unwrap_or(additions.saturating_add(deletions)),
+            previous_filename: file.previous_filename,
+        }
+    }
+}
+
+fn bounded_utf8(bytes: &[u8], max_bytes: usize) -> String {
+    let decoded = String::from_utf8_lossy(bytes);
+    if decoded.len() <= max_bytes {
+        return decoded.into_owned();
+    }
+    let mut end = max_bytes;
+    while end > 0 && !decoded.is_char_boundary(end) {
+        end -= 1;
+    }
+    decoded[..end].to_string()
+}
+
 impl PullRequestBranchSummary {
     fn from_forgejo_branch(value: ForgejoPullRequestBranch) -> Option<Self> {
         let ref_name = non_empty(value.ref_name);
@@ -2173,6 +2400,14 @@ impl PullRequestReviewSummary {
             user: value.user.and_then(|user| user.login),
             submitted_at: value.submitted_at,
         }
+    }
+}
+
+fn normalized_pull_request_review_state(state: &str) -> Result<&'static str, ForgejoError> {
+    match state.trim().to_ascii_uppercase().as_str() {
+        "APPROVED" | "APPROVE" => Ok("APPROVED"),
+        "REQUEST_CHANGES" | "REQUEST_CHANGES_REQUIRED" => Ok("REQUEST_CHANGES"),
+        _ => Err(ForgejoError::InvalidPullRequestReviewState),
     }
 }
 
@@ -2234,6 +2469,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn normalizes_supported_pull_request_review_states() {
+        assert_eq!(
+            normalized_pull_request_review_state("approve").unwrap(),
+            "APPROVED"
+        );
+        assert_eq!(
+            normalized_pull_request_review_state("REQUEST_CHANGES_REQUIRED").unwrap(),
+            "REQUEST_CHANGES"
+        );
+        assert!(normalized_pull_request_review_state("comment").is_err());
+    }
+
+    #[test]
     fn parses_owner_repo_target() {
         let target = RepositoryTarget::parse("rawholding/forgejo-keycloak-rust-mcp").unwrap();
         assert_eq!(target.owner, "rawholding");
@@ -2272,6 +2520,31 @@ mod tests {
         assert_eq!(request.page, 3);
         assert_eq!(request.limit, 50);
         assert!(PageRequest::from_cursor(Some("0"), None, 50).is_err());
+    }
+
+    #[test]
+    fn bounds_pull_request_diff_on_a_utf8_boundary() {
+        let text = "diff --git a/å b/å\n";
+        let bounded = bounded_utf8(text.as_bytes(), 20);
+
+        assert!(bounded.len() <= 20);
+        assert!(bounded.is_char_boundary(bounded.len()));
+        assert!(text.starts_with(&bounded));
+    }
+
+    #[test]
+    fn maps_changed_file_without_leaking_unbounded_fields() {
+        let file = serde_json::from_value::<ForgejoPullRequestChangedFile>(serde_json::json!({
+            "filename": "src/lib.rs",
+            "status": "modified",
+            "additions": 3,
+            "deletions": 2
+        }))
+        .unwrap();
+        let summary = PullRequestChangedFileSummary::from_changed_file(file);
+
+        assert_eq!(summary.filename, "src/lib.rs");
+        assert_eq!(summary.changes, 5);
     }
 
     #[test]

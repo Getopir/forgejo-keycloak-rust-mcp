@@ -225,7 +225,7 @@ Each endpoint should be classified by:
 
 Generated coverage does not mean unrestricted coverage. In `1.0.0`, only the existing reviewed semantic overlay is executable. All other generated endpoints are metadata-only and disabled until they receive a reviewed semantic operation, scope, risk class, output limit, and approval policy.
 
-`1.2.0` generated coverage:
+`1.2.1` generated coverage:
 
 - Pinned spec: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`.
 - Spec SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`.

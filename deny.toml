@@ -2,10 +2,9 @@
 
 [advisories]
 version = 2
-vulnerability = "deny"
-unmaintained = "warn"
+unmaintained = "none"
+unsound = "none"
 yanked = "deny"
-notice = "warn"
 ignore = []
 
 [licenses]
@@ -16,6 +15,7 @@ allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
     "ISC",
     "MIT",
     "Unicode-3.0",

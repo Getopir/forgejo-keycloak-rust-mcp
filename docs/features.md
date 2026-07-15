@@ -1,6 +1,6 @@
 # Features
 
-`1.2.0` is the PR/source-authority hygiene release of the Forgejo Keycloak Rust MCP gateway.
+`1.2.1` adds bounded pull-request diff inspection and evidence-backed review submission to the Forgejo Keycloak Rust MCP gateway.
 
 ## Identity And Policy
 
@@ -29,6 +29,8 @@
 - `list_pull_requests`
 - `create_pull_request`
 - `list_pull_request_reviews`
+- `submit_pull_request_review`
+- `get_pull_request_diff`
 - `list_releases`
 - `list_notifications`
 - `list_wiki_pages`
@@ -59,7 +61,7 @@ High-risk operations use file-backed, single-use approval records:
 
 The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and classifies all 491 operations by target type, risk, approval requirement, and exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. In `1.2.0`, 15 operations are exposed through the semantic overlay and 476 remain disabled.
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. The current semantic overlay covers 18 reviewed endpoints and leaves 473 metadata-only endpoints disabled.
 
 ## CLI
 

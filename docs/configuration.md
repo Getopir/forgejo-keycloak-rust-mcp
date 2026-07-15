@@ -16,6 +16,7 @@
 | `--trusted-email-header` | `FORGEJO_MCPD_TRUSTED_EMAIL_HEADER` | No | Optional trusted reverse-proxy email header generated from the mapping. |
 | `--trusted-full-name-header` | `FORGEJO_MCPD_TRUSTED_FULL_NAME_HEADER` | No | Optional trusted reverse-proxy full-name header generated from the mapping. |
 | `--max-page-limit` | `FORGEJO_MCPD_MAX_PAGE_LIMIT` | No | Maximum item count for list-style Phase 2 responses. Defaults to `50`. |
+| `--max-diff-bytes` | `FORGEJO_MCPD_MAX_DIFF_BYTES` | No | Maximum UTF-8 bytes returned by `get_pull_request_diff`. Defaults to `65536`. |
 | `--approval-store` | `FORGEJO_MCPD_APPROVAL_STORE` | No | Path to an append-only JSONL file for short-lived approval records. Required to validate approval IDs for high-risk gates. |
 | `--approval-ttl-seconds` | `FORGEJO_MCPD_APPROVAL_TTL_SECONDS` | No | Approval lifetime in seconds. Defaults to `900`. |
 
