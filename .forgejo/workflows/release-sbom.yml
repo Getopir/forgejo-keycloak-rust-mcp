@@ -8,8 +8,6 @@ jobs:
   attach:
     if: ${{ forgejo.server_url != 'https://codeberg.org' }}
     runs-on: docker
-    env:
-      NODE_EXTRA_CA_CERTS: /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt
     container:
       image: rust:1.95
     steps:

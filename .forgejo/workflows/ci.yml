@@ -9,8 +9,6 @@ jobs:
   rust:
     if: ${{ forgejo.server_url != 'https://codeberg.org' }}
     runs-on: docker
-    env:
-      NODE_EXTRA_CA_CERTS: /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt
     container:
       image: rust:1.95
     steps:
@@ -43,12 +41,6 @@ jobs:
         run: cargo deny check
       - name: Generate SBOM
         run: cargo cyclonedx --format json
-      - name: Upload CycloneDX SBOMs
-        uses: actions/upload-artifact@v3
-        with:
-          name: cyclonedx-sboms
-          path: crates/**/*.cdx.json
-          if-no-files-found: error
   public:
     if: ${{ forgejo.server_url == 'https://codeberg.org' }}
     runs-on: codeberg-medium

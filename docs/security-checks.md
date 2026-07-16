@@ -41,7 +41,7 @@ cargo install --locked cargo-cyclonedx
 cargo cyclonedx --format json
 ```
 
-This produces one `*.cdx.json` document beside each workspace crate manifest. CI retains these documents as the `cyclonedx-sboms` workflow artifact. Publishing a Forgejo release triggers `.forgejo/workflows/release-sbom.yml`, which regenerates and attaches the same SBOM set to that hosted release. The signed local release builder includes those documents in `SHA256SUMS` for publication to Codeberg and other release hosts.
+This produces one `*.cdx.json` document beside each workspace crate manifest. CI validates SBOM generation on every push and pull request. Publishing a Forgejo release triggers `.forgejo/workflows/release-sbom.yml`, which regenerates and attaches the SBOM set to that hosted release. The signed local release builder includes those documents in `SHA256SUMS` for publication to Codeberg and other release hosts.
 
 Do not commit generated SBOM files. Attach them to hosted release artifacts.
 
