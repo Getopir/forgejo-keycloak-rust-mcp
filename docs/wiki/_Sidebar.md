@@ -9,5 +9,6 @@
 - [Generated API Coverage](Generated-API-Coverage.md)
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
-- [Roadmap](Roadmap.md)
-- [Further Planned Improvements](Further-Planned-Improvements.md)
+- [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
+- [Project Status](Roadmap.md)
+- [Remaining Maintainer Backlog](Further-Planned-Improvements.md)

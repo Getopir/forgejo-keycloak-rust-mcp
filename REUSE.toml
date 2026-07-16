@@ -1,0 +1,16 @@
+version = 1
+
+[[annotations]]
+path = ["**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 forgejo-keycloak-rust-mcp contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "vendor/forgejo-api/*.json",
+    "crates/policy/vendor/forgejo-api/*.json",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2016-2026 The Gitea and Forgejo Authors"
+SPDX-License-Identifier = "MIT"

@@ -2,13 +2,16 @@
 
 ## Supported Version
 
-`0.7.0` is the current public beta release.
+`1.2.2` is the current supported public release.
 
 ## Reporting
 
 Report vulnerabilities privately to the project maintainers before public disclosure.
 
 Do not include live bearer tokens, Forgejo tokens, Keycloak client secrets, private keys, or production host credentials in reports. Use redacted examples and share sensitive material only through an agreed secure channel.
+
+Use the [credential-rotation and incident-response runbook](docs/credential-rotation-and-incident-response.md)
+for containment, rotation, recovery, and evidence requirements.
 
 ## Secret Handling
 
