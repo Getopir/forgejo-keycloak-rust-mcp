@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.2`, not a restatement of the
+This is the short, current backlog after `1.2.3`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -30,7 +30,24 @@ no commitment to enable every Forgejo API endpoint.
 
 | Improvement | Status |
 | --- | --- |
-| PR workflow readbacks: update PR, standalone reviewer request, branch status, required checks, and PR checks. | Deliberately disabled pending review |
+| Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Remaining |
+| Add a bounded `get_branch_status` read operation. | Remaining |
+| Add a bounded `get_required_checks` read operation. | Remaining |
+| Add a bounded `get_pr_checks` read operation. | Remaining |
+| Add an approval-gated `update_pull_request` operation. | Remaining |
+| Add an approval-gated standalone `request_reviewers` operation. | Remaining |
+| Add a bounded `list_action_runs` read operation. | Remaining |
+| Add a bounded `list_action_run_jobs` read operation. | Remaining |
+| Add a bounded `get_action_job_logs` read operation with output limits. | Remaining |
+| Add a bounded `get_action_run_logs` read operation with output limits. | Remaining |
+| Add a bounded `list_action_artifacts` read operation. | Remaining |
+| Add a bounded `download_action_artifact` operation with size limits. | Remaining |
+| Add an approval-gated `cancel_action_run` operation. | Remaining |
+| Add a bounded `get_repository_branch` read operation. | Remaining |
+| Add a bounded `list_repository_commits` read operation. | Remaining |
+| Add a bounded `get_repository_file` read operation. | Remaining |
+| Add an approval-gated `upload_release_asset` operation with size and content-type limits. | Remaining |
+| Add an approval-gated `update_issue` operation. | Remaining |
 | Role/group mapping to operation classes. | Remaining |
 | Any further generated Forgejo endpoint. | Requires a named semantic operation, schema, scope, bounded output, audit, and approval policy where applicable |
 | Destructive or instance-admin execution. | Intentionally disabled |
