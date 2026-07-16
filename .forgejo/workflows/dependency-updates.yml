@@ -12,6 +12,7 @@ jobs:
     container:
       image: renovate/renovate:43.263.7
     env:
+      GIT_SSL_CAINFO: /tmp/proxmox-root-ca.pem
       LOG_LEVEL: info
       NODE_EXTRA_CA_CERTS: /tmp/proxmox-root-ca.pem
       RENOVATE_ENDPOINT: ${{ forgejo.api_url }}
