@@ -187,7 +187,7 @@ struct ForgejoCombinedStatus {
     #[serde(default)]
     total_count: Option<i64>,
     #[serde(default)]
-    statuses: Vec<ForgejoCommitStatus>,
+    statuses: Option<Vec<ForgejoCommitStatus>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1017,9 +1017,7 @@ impl ForgejoClient {
         else {
             return Ok(None);
         };
-        Ok(Some(CommitStatusReadiness::from_combined_status(
-            status, sha,
-        )))
+        Ok(commit_status_readiness(status, sha))
     }
 
     async fn branch_exists(
@@ -1624,19 +1622,32 @@ impl ForgejoClient {
             .await
             .map_err(|err| ForgejoError::Request(err.to_string()))?;
         let status = response.status();
+        let body = response
+            .bytes()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
         if status == StatusCode::NOT_FOUND {
             return Ok(None);
         }
         if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(ForgejoError::Api { status, body });
+            return Err(ForgejoError::Api {
+                status,
+                body: String::from_utf8_lossy(&body).into_owned(),
+            });
         }
-        let value = response
-            .json::<T>()
-            .await
-            .map_err(|err| ForgejoError::Request(err.to_string()))?;
-        Ok(Some((value, status.as_u16())))
+        Ok(decode_optional_json(&body)?.map(|value| (value, status.as_u16())))
     }
+}
+
+fn decode_optional_json<T: for<'de> Deserialize<'de>>(
+    body: &[u8],
+) -> Result<Option<T>, ForgejoError> {
+    if body.iter().all(u8::is_ascii_whitespace) {
+        return Ok(None);
+    }
+    serde_json::from_slice(body)
+        .map(Some)
+        .map_err(|err| ForgejoError::Request(err.to_string()))
 }
 
 impl CreateIssueOptions {
@@ -2015,6 +2026,7 @@ impl CommitStatusReadiness {
     fn from_combined_status(value: ForgejoCombinedStatus, fallback_sha: &str) -> Self {
         let statuses = value
             .statuses
+            .unwrap_or_default()
             .into_iter()
             .map(CommitStatusSummary::from_status)
             .collect::<Vec<_>>();
@@ -2059,6 +2071,18 @@ impl CommitStatusReadiness {
         } else {
             report.join("; ")
         }
+    }
+}
+
+fn commit_status_readiness(
+    value: ForgejoCombinedStatus,
+    fallback_sha: &str,
+) -> Option<CommitStatusReadiness> {
+    let readiness = CommitStatusReadiness::from_combined_status(value, fallback_sha);
+    if readiness.statuses.is_empty() && readiness.total_count.unwrap_or(0) == 0 {
+        None
+    } else {
+        Some(readiness)
     }
 }
 
@@ -2467,6 +2491,36 @@ impl IssueCommentSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn successful_empty_optional_json_is_absent_instead_of_a_decode_failure() {
+        assert_eq!(
+            decode_optional_json::<serde_json::Value>(b"").unwrap(),
+            None
+        );
+        assert_eq!(
+            decode_optional_json::<serde_json::Value>(b" \n\t").unwrap(),
+            None
+        );
+        assert_eq!(
+            decode_optional_json::<serde_json::Value>(br#"{"state":"success"}"#).unwrap(),
+            Some(serde_json::json!({ "state": "success" }))
+        );
+        assert!(decode_optional_json::<serde_json::Value>(b"not-json").is_err());
+    }
+
+    #[test]
+    fn null_zero_count_commit_status_means_no_required_check_gate() {
+        let status = serde_json::from_value::<ForgejoCombinedStatus>(serde_json::json!({
+            "sha": "abc123",
+            "state": "pending",
+            "total_count": 0,
+            "statuses": null
+        }))
+        .unwrap();
+
+        assert!(commit_status_readiness(status, "fallback").is_none());
+    }
 
     #[test]
     fn normalizes_supported_pull_request_review_states() {
