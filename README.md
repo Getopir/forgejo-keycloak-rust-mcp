@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.2.4` means:
+Version `1.2.6` means:
 
 - `1`: first stable public release line.
 - `2`: PR/source-authority hygiene feature series.
-- `4`: fourth repair release in this feature series.
+- `6`: sixth repair release in this feature series.
 
 The governing rule is:
 
@@ -29,7 +29,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.2.4` adds automated dependency-update review, CI SBOM retention, and hosted-release SBOM attachment without expanding the gateway's executable capability surface. The `1.2` feature series includes:
+`1.2.6` publishes the maintained threat model and releases the durable audit, JWKS lifecycle documentation, and pull-request secret-scanning work without expanding the gateway's executable capability surface. The `1.2` feature series includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -166,12 +166,14 @@ curl -sS \
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
 - [Security Checks](docs/security-checks.md)
+- [Threat Model](docs/threat-model.md)
 - [JWKS Cache Limits And Key Rotation](docs/jwks-cache-and-key-rotation.md)
 - [Release Artifact Verification](docs/release-verification.md)
 - [Credential Rotation and Incident Response](docs/credential-rotation-and-incident-response.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.2.6](docs/release-notes/1.2.6.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)
 - [Release Notes 1.2.2](docs/release-notes/1.2.2.md)

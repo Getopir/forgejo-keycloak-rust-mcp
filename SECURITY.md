@@ -2,7 +2,7 @@
 
 ## Supported Version
 
-`1.2.3` is the current supported public release.
+`1.2.6` is the current supported public release.
 
 ## Reporting
 
@@ -12,6 +12,8 @@ Do not include live bearer tokens, Forgejo tokens, Keycloak client secrets, priv
 
 Use the [credential-rotation and incident-response runbook](docs/credential-rotation-and-incident-response.md)
 for containment, rotation, recovery, and evidence requirements.
+
+The maintained [threat model](docs/threat-model.md) documents protected assets, trust boundaries, attacker profiles, controls, residual risks, deployment assumptions, and review triggers.
 
 ## Secret Handling
 

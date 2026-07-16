@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.4`, not a restatement of the
+This is the short, current backlog after `1.2.6`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -20,10 +20,10 @@ no commitment to enable every Forgejo API endpoint.
 | Improvement | Status |
 | --- | --- |
 | Document credential-rotation and incident-response procedures. | Complete in `1.2.2`; see [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md) |
-| Add pull-request secret scanning in CI. | Complete on `main`; checksum-verified Gitleaks scans full Git history before Rust CI checks |
-| Document JWKS cache limits and key-rotation behaviour. | Complete on `main`; see [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md) |
-| Export structured audit records to a durable sink. | Complete on `main`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
-| Publish a full threat model linked from the security documentation. | Remaining |
+| Add pull-request secret scanning in CI. | Complete in `1.2.6`; checksum-verified Gitleaks scans full Git history before Rust CI checks |
+| Document JWKS cache limits and key-rotation behaviour. | Complete in `1.2.6`; see [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md) |
+| Export structured audit records to a durable sink. | Complete in `1.2.6`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
+| Publish a full threat model linked from the security documentation. | Complete in `1.2.6`; see [Threat Model](Threat-Model.md) |
 | Add per-agent rate limiting. Approval replay prevention is already shipped. | Remaining |
 
 ## Carefully Scoped Capability Work

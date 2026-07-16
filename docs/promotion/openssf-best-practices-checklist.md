@@ -22,7 +22,7 @@ Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 
 - Create the OpenSSF project entry and complete the web checklist.
 - Attach a Codeberg-compatible CI runner or Woodpecker pipeline so `cargo fmt`, `cargo test`, dependency audit, dependency policy, and SBOM generation run automatically.
-- Add a public threat model.
+- Public threat model completed in `1.2.6`; see `docs/threat-model.md`.
 - Decide whether to add a dedicated private security contact.
 - Add branch protection and required checks once CI exists.
 - Add release artifact signing or documented source-tag verification.
