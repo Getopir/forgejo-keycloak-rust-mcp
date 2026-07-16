@@ -9,7 +9,7 @@ no commitment to enable every Forgejo API endpoint.
 | Improvement | Status |
 | --- | --- |
 | Complete REUSE copyright metadata for maintained source files. | Complete in `1.2.2` via `REUSE.toml` and `LICENSES/` |
-| Produce signed release artifacts and document verification. | Remaining |
+| Produce signed release artifacts and document verification. | Complete in `1.2.3`; see [Release Artifact Verification](Release-Artifact-Verification.md) |
 | Attach the CI-generated CycloneDX SBOM to hosted releases. | Remaining |
 | Finish the OpenSSF project entry/badge after public-hosting prerequisites are met. | Remaining |
 | Add automated dependency-update review with tests. | Remaining |

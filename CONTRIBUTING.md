@@ -1,23 +1,33 @@
 # Contributing
 
-Contributions are welcome when they keep the project clean-room, testable, and safe to publish.
+Contributions from people and AI-assisted coding workflows are welcome.
 
-## Before Opening a Change
+## Make A Change
 
-- Do not copy implementation code from GPL Forgejo MCP projects into this repository.
-- Keep secrets, live tokens, private keys, internal IP addresses, and production hostnames out of commits.
-- Run `cargo fmt` and `cargo test --workspace`.
-- Update documentation and `docs/wiki` when behavior or setup changes.
-- Add tests for new policy, identity, or audit behavior.
+1. Open an issue or describe the problem before starting a large change.
+2. Keep the change focused and add tests when behavior changes.
+3. Update the documentation and `docs/wiki` when setup or behavior changes.
+4. Run the checks below and open a pull request explaining what changed and
+   how it was verified.
 
-## Commit Scope
+```sh
+cargo fmt --check
+cargo test --workspace
+reuse lint
+```
 
-Keep commits focused. A useful change should describe one behavior, one documentation update, or one release preparation step.
+AI-generated or AI-assisted changes are accepted. The contributor remains
+responsible for reviewing the code, confirming its license and origin, running
+the tests, and describing the verification in the pull request.
 
-## Security Reports
+## Project Rules
 
-Do not open public issues for suspected vulnerabilities. Follow [SECURITY.md](SECURITY.md) and contact maintainers privately first.
+- Keep the implementation clean-room; do not copy code from incompatible
+  projects.
+- Never commit secrets, tokens, private keys, internal addresses, or production
+  credentials.
+- Preserve bounded outputs, explicit authorization, and approval requirements.
+- Report security issues privately using [SECURITY.md](SECURITY.md).
 
-## License
-
-By contributing, you agree that your contribution is provided under the repository license: `AGPL-3.0-or-later`.
+By contributing, you agree to license your contribution under
+`AGPL-3.0-or-later`.

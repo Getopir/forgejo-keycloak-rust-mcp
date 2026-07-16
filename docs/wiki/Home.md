@@ -17,6 +17,8 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
+- [Release Artifact Verification](Release-Artifact-Verification.md)
+- [Contributing](Contributing.md)
 - [Project Status](Roadmap.md)
 - [Remaining Maintainer Backlog](Further-Planned-Improvements.md)
 
@@ -26,4 +28,4 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `1.2.2`.
+Current public release: `1.2.3`.

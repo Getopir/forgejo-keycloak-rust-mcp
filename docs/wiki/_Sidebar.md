@@ -10,5 +10,7 @@
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
+- [Release Artifact Verification](Release-Artifact-Verification.md)
+- [Contributing](Contributing.md)
 - [Project Status](Roadmap.md)
 - [Remaining Maintainer Backlog](Further-Planned-Improvements.md)
