@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["cargo"],
+  "timezone": "Europe/Oslo",
+  "schedule": ["before 4am on Monday"],
+  "prConcurrentLimit": 3,
+  "automerge": false,
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 4am on Monday"]
+  }
+}

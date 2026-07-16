@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.2.3` means:
+Version `1.2.4` means:
 
 - `1`: first stable public release line.
 - `2`: PR/source-authority hygiene feature series.
-- `3`: third repair release in this feature series.
+- `4`: fourth repair release in this feature series.
 
 The governing rule is:
 
@@ -29,7 +29,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.2.3` adds simple human and AI coding-agent contribution guidance without expanding the gateway's executable capability surface. The `1.2` feature series includes:
+`1.2.4` adds automated dependency-update review, CI SBOM retention, and hosted-release SBOM attachment without expanding the gateway's executable capability surface. The `1.2` feature series includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -171,6 +171,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)
 - [Release Notes 1.2.2](docs/release-notes/1.2.2.md)
 - [Release Notes 1.2.1](docs/release-notes/1.2.1.md)

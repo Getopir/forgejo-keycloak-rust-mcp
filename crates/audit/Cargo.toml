@@ -2,7 +2,7 @@
 
 [package]
 name = "forgejo-keycloak-mcp-audit"
-version = "1.2.3"
+version = "1.2.4"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -18,7 +18,7 @@ categories.workspace = true
 name = "audit"
 
 [dependencies]
-policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.2.3" }
+policy = { package = "forgejo-keycloak-mcp-policy", path = "../policy", version = "1.2.4" }
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true

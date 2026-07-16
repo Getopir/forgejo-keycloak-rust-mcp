@@ -1,8 +1,8 @@
 # Release Artifact Verification
 
-Maintained releases provide source archives, `SHA256SUMS`, and
-`SHA256SUMS.sig`. The signature protects the checksum manifest, which in turn
-protects both published archives.
+Maintained releases provide source archives, four workspace CycloneDX JSON
+documents, `SHA256SUMS`, and `SHA256SUMS.sig`. The signature protects the
+checksum manifest, which in turn protects every published artifact.
 
 From a clean source checkout, place the downloaded checksum and signature files
 in the repository root and run:
@@ -15,7 +15,7 @@ ssh-keygen -Y verify \
   -s SHA256SUMS.sig < SHA256SUMS
 ```
 
-Expected `1.2.3` signer fingerprint:
+Expected `1.2.4` signer fingerprint:
 
 ```text
 SHA256:MtI1AAdPMX0v3uRCxqyS+yissU/8gHkmZ2sYPpPLHm8

@@ -38,11 +38,13 @@ Install and run the CycloneDX Cargo plugin:
 
 ```sh
 cargo install --locked cargo-cyclonedx
-cargo cyclonedx --format json --output-file target/forgejo-keycloak-rust-mcp.cdx.json
+cargo cyclonedx --format json
 ```
 
-Do not commit generated SBOM files unless the release process explicitly calls for storing that artifact in the repository. Prefer attaching SBOM files to hosted release artifacts.
+This produces one `*.cdx.json` document beside each workspace crate manifest. CI retains these documents as the `cyclonedx-sboms` workflow artifact. Publishing a Forgejo release triggers `.forgejo/workflows/release-sbom.yml`, which regenerates and attaches the same SBOM set to that hosted release. The signed local release builder includes those documents in `SHA256SUMS` for publication to Codeberg and other release hosts.
+
+Do not commit generated SBOM files. Attach them to hosted release artifacts.
 
 ## CI
 
-`.forgejo/workflows/ci.yml` is provided for self-hosted Forgejo Actions runners. Codeberg documents hosted Actions as limited and points projects that need hosted CI toward Woodpecker CI. Treat the workflow as ready-to-use once a runner is attached to the repository or organization.
+`.forgejo/workflows/ci.yml` runs on the attached self-hosted Forgejo Actions runner. `.forgejo/workflows/dependency-updates.yml` runs Renovate weekly and opens dependency pull requests; those pull requests must pass the same format, check, test, audit, dependency-policy, and SBOM jobs before review.

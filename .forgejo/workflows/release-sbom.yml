@@ -1,0 +1,44 @@
+name: release-sbom
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  attach:
+    if: ${{ forgejo.server_url != 'https://codeberg.org' }}
+    runs-on: docker
+    container:
+      image: rust:1.95
+    steps:
+      - name: Install release tooling
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git jq nodejs
+          rm -rf /var/lib/apt/lists/*
+          cargo install --locked cargo-cyclonedx
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ forgejo.event.release.tag_name }}
+      - name: Generate CycloneDX SBOMs
+        run: cargo cyclonedx --format json
+      - name: Attach SBOMs to the hosted release
+        env:
+          FORGEJO_API_URL: ${{ forgejo.api_url }}
+          FORGEJO_REPOSITORY: ${{ forgejo.repository }}
+          FORGEJO_RELEASE_TAG: ${{ forgejo.event.release.tag_name }}
+          FORGEJO_TOKEN: ${{ forgejo.token }}
+        run: |
+          set -eu
+          release_id="$(curl --fail --silent --show-error \
+            -H "Authorization: token ${FORGEJO_TOKEN}" \
+            "${FORGEJO_API_URL}/repos/${FORGEJO_REPOSITORY}/releases/tags/${FORGEJO_RELEASE_TAG}" \
+            | jq -r '.id')"
+          test -n "${release_id}"
+          find crates -name '*.cdx.json' -type f -print | while read -r sbom; do
+            name="$(basename "${sbom}")"
+            curl --fail --silent --show-error \
+              -H "Authorization: token ${FORGEJO_TOKEN}" \
+              -F "attachment=@${sbom};filename=${name};type=application/vnd.cyclonedx+json" \
+              "${FORGEJO_API_URL}/repos/${FORGEJO_REPOSITORY}/releases/${release_id}/assets?name=${name}"
+          done

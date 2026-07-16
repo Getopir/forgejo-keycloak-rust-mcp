@@ -4,6 +4,10 @@ Each maintained release publishes these signed source artifacts:
 
 - `forgejo-keycloak-rust-mcp-<version>.tar.gz`
 - `forgejo-keycloak-rust-mcp-<version>.zip`
+- `forgejo-keycloak-mcp-audit.cdx.json`
+- `forgejo-keycloak-mcp-identity.cdx.json`
+- `forgejo-keycloak-mcp-policy.cdx.json`
+- `forgejo-keycloak-rust-mcp.cdx.json`
 - `SHA256SUMS`
 - `SHA256SUMS.sig`
 
@@ -21,13 +25,13 @@ ssh-keygen -Y verify \
   -s SHA256SUMS.sig < SHA256SUMS
 ```
 
-The expected signer fingerprint for the `1.2.3` release is:
+The expected signer fingerprint for the `1.2.4` release is:
 
 ```text
 SHA256:MtI1AAdPMX0v3uRCxqyS+yissU/8gHkmZ2sYPpPLHm8
 ```
 
-After the signature succeeds, verify the downloaded archive hashes:
+After the signature succeeds, verify all downloaded artifact hashes:
 
 ```sh
 sha256sum --check SHA256SUMS
@@ -35,13 +39,13 @@ sha256sum --check SHA256SUMS
 
 On PowerShell, compare each line with `Get-FileHash -Algorithm SHA256`.
 Verification fails if the checksum manifest, signature, signer identity,
-namespace, or either archive has been changed.
+namespace, or any release artifact has been changed.
 
 Maintainers generate artifacts from the annotated release tag:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\build-release-artifacts.ps1 `
-  -Version 1.2.3 `
+  -Version 1.2.4 `
   -SigningKey <private-key-path> `
   -OutputDirectory <empty-output-directory>
 ```

@@ -1,0 +1,24 @@
+name: dependency-updates
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  renovate:
+    if: ${{ forgejo.server_url != 'https://codeberg.org' }}
+    runs-on: docker
+    container:
+      image: renovate/renovate:43.263.7
+    env:
+      LOG_LEVEL: info
+      RENOVATE_ENDPOINT: ${{ forgejo.api_url }}
+      RENOVATE_ONBOARDING: "false"
+      RENOVATE_PLATFORM: forgejo
+      RENOVATE_REPOSITORIES: ${{ forgejo.repository }}
+      RENOVATE_REQUIRE_CONFIG: required
+      RENOVATE_TOKEN: ${{ forgejo.token }}
+    steps:
+      - name: Review dependency updates
+        run: renovate

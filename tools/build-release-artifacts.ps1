@@ -44,7 +44,20 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to create tar.gz source archive' }
 & git archive --format=zip --prefix=$prefix --output=$zipPath $tag
 if ($LASTEXITCODE -ne 0) { throw 'Failed to create zip source archive' }
 
-$checksumLines = @($tarPath, $zipPath) | ForEach-Object {
+& cargo cyclonedx --format json
+if ($LASTEXITCODE -ne 0) { throw 'Failed to generate CycloneDX SBOMs' }
+
+$sbomPaths = @(Get-ChildItem -Path (Join-Path $PSScriptRoot '..\crates') -Recurse -Filter '*.cdx.json' -File)
+if ($sbomPaths.Count -eq 0) { throw 'No CycloneDX SBOM files were generated' }
+
+$releaseSbomPaths = @($sbomPaths | ForEach-Object {
+    $destination = Join-Path $output $_.Name
+    Copy-Item -LiteralPath $_.FullName -Destination $destination
+    $destination
+})
+
+$releaseFiles = @($tarPath, $zipPath) + $releaseSbomPaths
+$checksumLines = $releaseFiles | ForEach-Object {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_).Hash.ToLowerInvariant()
     "$hash  $([IO.Path]::GetFileName($_))"
 }
