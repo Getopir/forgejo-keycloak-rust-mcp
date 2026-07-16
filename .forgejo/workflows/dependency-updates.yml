@@ -18,7 +18,9 @@ jobs:
       RENOVATE_PLATFORM: forgejo
       RENOVATE_REPOSITORIES: ${{ forgejo.repository }}
       RENOVATE_REQUIRE_CONFIG: required
-      RENOVATE_TOKEN: ${{ forgejo.token }}
+      RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
     steps:
+      - name: Verify Renovate credential
+        run: test -n "${RENOVATE_TOKEN}"
       - name: Review dependency updates
         run: renovate
