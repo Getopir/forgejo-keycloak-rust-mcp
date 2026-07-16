@@ -2,7 +2,7 @@
 
 use anyhow::{Context, ensure};
 use approval::{ApprovalError, ApprovalStore};
-use audit::{AuditDecision, AuditEvent, PrincipalType};
+use audit::{AuditDecision, AuditEvent, JsonlAuditSink, PrincipalType};
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Json};
@@ -21,10 +21,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tokio::net::TcpListener;
 use tracing::{info, warn};
 use uuid::Uuid;
+
+static AUDIT_SINK: OnceLock<JsonlAuditSink> = OnceLock::new();
 
 mod approval;
 mod forgejo;
@@ -64,6 +66,8 @@ struct Args {
     max_diff_bytes: usize,
     #[arg(long, env = "FORGEJO_MCPD_APPROVAL_STORE")]
     approval_store: Option<PathBuf>,
+    #[arg(long, env = "FORGEJO_MCPD_AUDIT_LOG")]
+    audit_log: Option<PathBuf>,
     #[arg(
         long,
         env = "FORGEJO_MCPD_APPROVAL_TTL_SECONDS",
@@ -178,6 +182,13 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let args = Args::parse();
+    if let Some(path) = args.audit_log.as_ref() {
+        let sink = JsonlAuditSink::open(path)
+            .with_context(|| format!("failed to open audit log {}", path.display()))?;
+        AUDIT_SINK
+            .set(sink)
+            .map_err(|_| anyhow::anyhow!("audit log was already configured"))?;
+    }
     validate_tls_urls(args.tls, &args.resource, args.forgejo_url.as_deref())?;
     let discovery_url = args.discovery_url.clone().unwrap_or_else(|| {
         format!(
@@ -505,7 +516,7 @@ async fn mcp_handler(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
     (
         status,
         Json(McpResponse {
@@ -1615,7 +1626,7 @@ async fn repository_metadata_response(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
     (
         StatusCode::OK,
         Json(McpResponse {
@@ -2136,7 +2147,7 @@ fn approval_required_response(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
     (
         status,
         Json(McpResponse {
@@ -2234,7 +2245,7 @@ fn create_approval_response(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
     (
         StatusCode::OK,
         Json(McpResponse {
@@ -2428,7 +2439,7 @@ fn audit_success(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
 }
 
 fn audit_decision(
@@ -2459,7 +2470,17 @@ fn audit_decision(
         duration_ms: 0,
         response_bytes: 0,
     };
-    info!(audit = %serde_json::to_string(&event).unwrap_or_default(), "audit event");
+    record_audit(&event);
+}
+
+fn record_audit(event: &AuditEvent) {
+    let serialized = serde_json::to_string(event).unwrap_or_default();
+    info!(audit = %serialized, "audit event");
+    if let Some(sink) = AUDIT_SINK.get()
+        && let Err(err) = sink.record(event)
+    {
+        warn!(error = %err, "failed to persist audit event");
+    }
 }
 
 fn error_response(status: StatusCode, request_id: Uuid, error: &str) -> axum::response::Response {

@@ -20,9 +20,9 @@ no commitment to enable every Forgejo API endpoint.
 | Improvement | Status |
 | --- | --- |
 | Document credential-rotation and incident-response procedures. | Complete in `1.2.2`; see [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md) |
-| Add pull-request secret scanning in CI. | Remaining |
-| Document JWKS cache limits and key-rotation behaviour. | Remaining |
-| Export structured audit records to a durable sink. | Remaining |
+| Add pull-request secret scanning in CI. | Complete on `main`; checksum-verified Gitleaks scans full Git history before Rust CI checks |
+| Document JWKS cache limits and key-rotation behaviour. | Complete on `main`; see [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md) |
+| Export structured audit records to a durable sink. | Complete on `main`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
 | Publish a full threat model linked from the security documentation. | Remaining |
 | Add per-agent rate limiting. Approval replay prevention is already shipped. | Remaining |
 

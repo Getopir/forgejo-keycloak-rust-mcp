@@ -15,7 +15,7 @@ jobs:
       - name: Install checkout runtime
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git nodejs openssl
+          apt-get install -y --no-install-recommends ca-certificates curl git nodejs openssl
           echo | openssl s_client -showcerts -connect forgejo.lan:443 -servername forgejo.lan 2>/dev/null > /tmp/forgejo-chain.pem
           awk '/BEGIN CERTIFICATE/{n++} n==2{print} n==2 && /END CERTIFICATE/{exit}' /tmp/forgejo-chain.pem > /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt
           test "$(openssl x509 -in /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt -noout -fingerprint -sha256)" = "sha256 Fingerprint=3B:59:BD:00:12:79:D0:4D:A5:A0:B5:A4:75:87:1A:6A:47:70:09:C5:E7:78:6C:C4:AD:11:DC:4F:0B:10:E8:3C"
@@ -24,6 +24,16 @@ jobs:
           rm -f /tmp/forgejo-chain.pem
           rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        run: |
+          curl --fail --location --silent --show-error --output /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+          rm /tmp/gitleaks.tar.gz
+      - name: Scan commits for secrets
+        run: gitleaks git --redact --no-banner .
       - name: Format
         run: cargo fmt --check
       - name: Check
@@ -47,7 +57,22 @@ jobs:
     container:
       image: rust:1.95
     steps:
+      - name: Install secret scanner runtime
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl
+          rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        run: |
+          curl --fail --location --silent --show-error --output /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+          rm /tmp/gitleaks.tar.gz
+      - name: Scan commits for secrets
+        run: gitleaks git --redact --no-banner .
       - name: Install Rust components
         run: rustup component add rustfmt
       - name: Format

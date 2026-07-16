@@ -16,6 +16,7 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [Generated API Coverage](Generated-API-Coverage.md)
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
+- [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md)
 - [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
 - [Release Artifact Verification](Release-Artifact-Verification.md)
 - [Contributing](Contributing.md)

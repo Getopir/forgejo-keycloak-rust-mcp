@@ -18,6 +18,7 @@
 | `--max-page-limit` | `FORGEJO_MCPD_MAX_PAGE_LIMIT` | No | Maximum item count for list-style Phase 2 responses. Defaults to `50`. |
 | `--max-diff-bytes` | `FORGEJO_MCPD_MAX_DIFF_BYTES` | No | Maximum UTF-8 bytes returned by `get_pull_request_diff`. Defaults to `65536`. |
 | `--approval-store` | `FORGEJO_MCPD_APPROVAL_STORE` | No | Path to an append-only JSONL file for short-lived approval records. Required to validate approval IDs for high-risk gates. |
+| `--audit-log` | `FORGEJO_MCPD_AUDIT_LOG` | No | Path to an append-only JSONL file that receives structured audit events. |
 | `--approval-ttl-seconds` | `FORGEJO_MCPD_APPROVAL_TTL_SECONDS` | No | Approval lifetime in seconds. Defaults to `900`. |
 
 ## Keycloak Setup
@@ -157,3 +158,19 @@ export FORGEJO_MCPD_APPROVAL_TTL_SECONDS=900
 The approval file is append-only JSONL. Store it on a filesystem readable and writable only by the gateway service account. Do not place it inside the public repository, a web root, or a shared workspace.
 
 Approval-backed execution requires a different mapped principal from the one that created the approval. For example, a human maintainer can create an approval and an identified agent can execute it, or one service principal can approve and another service principal can execute. Reusing the same mapped Forgejo login for both roles is denied.
+
+## Durable Audit Export
+
+Set `FORGEJO_MCPD_AUDIT_LOG` to persist the same structured audit events emitted through tracing:
+
+```sh
+export FORGEJO_MCPD_AUDIT_LOG=/var/log/forgejo-mcpd/audit.jsonl
+```
+
+The daemon opens this append-only file at startup and refuses to start if it cannot be opened. Each event is serialized as one JSON line, flushed, and synchronized to the filesystem before the write completes. Runtime write failures are reported through tracing. Place the file on persistent storage, restrict it to the gateway service account and audit readers, and configure the host's log rotation and retention policy. Do not place it in the repository, a web root, or ephemeral container storage.
+
+The record schema contains identity, policy, target, decision, approval, Forgejo status, and timing metadata. It intentionally excludes bearer tokens and downstream Forgejo credentials.
+
+## JWKS Lifecycle
+
+The validator loads the discovery document and JWKS once during startup. It does not implement a TTL, background refresh, stale-key fallback, or refresh-on-unknown-`kid`. See [JWKS Cache Limits And Key Rotation](jwks-cache-and-key-rotation.md) for the deployment procedure and current limits.

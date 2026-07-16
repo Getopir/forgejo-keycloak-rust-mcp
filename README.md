@@ -166,6 +166,7 @@ curl -sS \
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
 - [Security Checks](docs/security-checks.md)
+- [JWKS Cache Limits And Key Rotation](docs/jwks-cache-and-key-rotation.md)
 - [Release Artifact Verification](docs/release-verification.md)
 - [Credential Rotation and Incident Response](docs/credential-rotation-and-incident-response.md)
 - [Codeberg Publishing](docs/codeberg-publishing.md)
