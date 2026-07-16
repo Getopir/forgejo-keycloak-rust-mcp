@@ -13,6 +13,7 @@ jobs:
       image: renovate/renovate:43.263.7
     env:
       LOG_LEVEL: info
+      NODE_EXTRA_CA_CERTS: /tmp/proxmox-root-ca.pem
       RENOVATE_ENDPOINT: ${{ forgejo.api_url }}
       RENOVATE_ONBOARDING: "false"
       RENOVATE_PLATFORM: forgejo
@@ -20,7 +21,13 @@ jobs:
       RENOVATE_REQUIRE_CONFIG: required
       RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
     steps:
-      - name: Verify Renovate credential
-        run: test -n "${RENOVATE_TOKEN}"
+      - name: Configure Renovate trust and credential
+        env:
+          INTERNAL_ROOT_CA_PEM: ${{ secrets.INTERNAL_ROOT_CA_PEM }}
+        run: |
+          test -n "${RENOVATE_TOKEN}"
+          test -n "${INTERNAL_ROOT_CA_PEM}"
+          printf '%s\n' "${INTERNAL_ROOT_CA_PEM}" > "${NODE_EXTRA_CA_CERTS}"
+          test "$(openssl x509 -in "${NODE_EXTRA_CA_CERTS}" -noout -fingerprint -sha256)" = "sha256 Fingerprint=CE:3B:57:1C:3D:2A:BB:50:3D:74:3A:F1:D0:A6:4E:8C:74:27:A7:BE:14:75:13:38:B3:5A:C5:8B:08:AB:D3:5F"
       - name: Review dependency updates
         run: renovate
