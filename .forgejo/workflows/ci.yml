@@ -20,7 +20,7 @@ jobs:
           awk '/BEGIN CERTIFICATE/{n++} n==2{print} n==2 && /END CERTIFICATE/{exit}' /tmp/forgejo-chain.pem > /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt
           test "$(openssl x509 -in /usr/local/share/ca-certificates/forgejo-intermediate-ca.crt -noout -fingerprint -sha256)" = "sha256 Fingerprint=3B:59:BD:00:12:79:D0:4D:A5:A0:B5:A4:75:87:1A:6A:47:70:09:C5:E7:78:6C:C4:AD:11:DC:4F:0B:10:E8:3C"
           update-ca-certificates
-          rustup component add rustfmt clippy
+          rustup component add rustfmt clippy llvm-tools-preview
           rm -f /tmp/forgejo-chain.pem
           rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
@@ -42,6 +42,10 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+      - name: Install coverage tool
+        run: cargo install --locked --version 0.8.7 cargo-llvm-cov
+      - name: Enforce domain-code coverage
+        run: cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex 'forgejo-mcpd[\\/]src[\\/](main|bin[\\/]forgejo-mcpctl)\.rs' --fail-under-lines 55 --fail-under-functions 50 --fail-under-regions 55
       - name: Install security tools
         run: |
           cargo install --locked cargo-audit
@@ -76,7 +80,7 @@ jobs:
       - name: Scan commits for secrets
         run: gitleaks git --redact --no-banner .
       - name: Install Rust components
-        run: rustup component add rustfmt clippy
+        run: rustup component add rustfmt clippy llvm-tools-preview
       - name: Format
         run: cargo fmt --check
       - name: Check
@@ -85,3 +89,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
+      - name: Install coverage tool
+        run: cargo install --locked --version 0.8.7 cargo-llvm-cov
+      - name: Enforce domain-code coverage
+        run: cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex 'forgejo-mcpd[\\/]src[\\/](main|bin[\\/]forgejo-mcpctl)\.rs' --fail-under-lines 55 --fail-under-functions 50 --fail-under-regions 55

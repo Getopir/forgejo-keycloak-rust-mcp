@@ -65,6 +65,8 @@
   "test_policy_justification": "CONTRIBUTING.md requires tests when behavior changes.",
   "tests_are_added_status": "Met",
   "tests_are_added_justification": "Behavior changes in the maintained source include focused regression tests.",
+  "test_most_status": "Met",
+  "test_most_justification": "Both CI paths enforce majority domain-code coverage: at least 55% lines, 50% functions, and 55% regions. The reproducible scope and current 59.62/52.48/58.50 baseline are documented in docs/testing.md.",
   "warnings_status": "Met",
   "warnings_justification": "CI runs cargo check and strict Clippy across the workspace and all targets.",
   "warnings_fixed_status": "Met",

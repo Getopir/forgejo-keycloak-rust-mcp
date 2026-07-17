@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.10`, not a restatement of the
+This is the short, current backlog after `1.2.11`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -34,7 +34,7 @@ no commitment to enable every Forgejo API endpoint.
 
 | Improvement | Status |
 | --- | --- |
-| Demonstrate that automated tests cover most code branches, input fields, and functionality. | Remaining; add reproducible statement and branch coverage measurement to CI, publish the results, define documented thresholds, and close material gaps before claiming the OpenSSF `test_most` criterion |
+| Demonstrate that automated tests cover most code branches, input fields, and functionality. | Complete in `1.2.11`; both CI paths publish and enforce a scoped domain-code baseline of 59.62% lines, 52.48% functions, and 58.50% regions with majority thresholds |
 | Enforce maximally strict Rust warnings in CI. | Complete in `1.2.9`; internal Forgejo and public Codeberg CI reject every Clippy warning across the workspace and all targets |
 | Run static analysis on every push and pull request. | Complete in `1.2.9`; both push and pull-request workflows run strict Clippy source analysis |
 

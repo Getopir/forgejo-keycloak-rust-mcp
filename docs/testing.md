@@ -6,6 +6,32 @@ Run the Rust test suite:
 cargo test --workspace
 ```
 
+## Coverage
+
+Install the stable Rust coverage tooling and reproduce the CI measurement:
+
+```sh
+rustup component add llvm-tools-preview
+cargo install --locked --version 0.8.7 cargo-llvm-cov
+cargo llvm-cov --workspace --all-features --summary-only \
+  --ignore-filename-regex 'forgejo-mcpd[\\/]src[\\/](main|bin[\\/]forgejo-mcpctl)\.rs' \
+  --fail-under-lines 55 \
+  --fail-under-functions 50 \
+  --fail-under-regions 55
+```
+
+The `1.2.11` baseline is 59.62% lines, 52.48% functions, and 58.50%
+regions across domain code. The measurement includes identity, policy, approval,
+audit, rate limiting, principal mapping, and the complete Forgejo client/parser
+module. It excludes only the daemon and CLI process-entrypoint files from the
+percentage calculation; those files remain compiled, strictly linted, and
+covered by focused validation tests where their logic is separable.
+
+Both internal Forgejo and public Codeberg CI enforce the thresholds. Coverage
+summaries are therefore published in the corresponding push and pull-request
+job logs. Lowering a threshold or expanding the exclusion requires maintainer
+review and a documented rationale.
+
 Run the daemon locally:
 
 ```sh

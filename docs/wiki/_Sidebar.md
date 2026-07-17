@@ -13,6 +13,7 @@
 - [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md)
 - [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
 - [Release Artifact Verification](Release-Artifact-Verification.md)
+- [Testing And Coverage](Testing-And-Coverage.md)
 - [Contributing](Contributing.md)
 - [Project Status](Roadmap.md)
 - [Remaining Maintainer Backlog](Further-Planned-Improvements.md)

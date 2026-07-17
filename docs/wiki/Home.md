@@ -20,6 +20,7 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md)
 - [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md)
 - [Release Artifact Verification](Release-Artifact-Verification.md)
+- [Testing And Coverage](Testing-And-Coverage.md)
 - [Contributing](Contributing.md)
 - [Project Status](Roadmap.md)
 - [Remaining Maintainer Backlog](Further-Planned-Improvements.md)
@@ -30,4 +31,4 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `1.2.10`.
+Current public release: `1.2.11`.
