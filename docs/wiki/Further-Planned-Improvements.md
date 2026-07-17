@@ -25,6 +25,7 @@ no commitment to enable every Forgejo API endpoint.
 | Export structured audit records to a durable sink. | Complete in `1.2.6`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
 | Publish a full threat model linked from the security documentation. | Complete in `1.2.6`; see [Threat Model](Threat-Model.md) |
 | Add per-agent rate limiting. Approval replay prevention is already shipped. | Complete on main; bounded per-agent token buckets return `429` with retry guidance and emit denied audit records |
+| Add an administrator-only MCP settings surface linked from Forgejo, backed by validated non-secret configuration with effective-value readback, audit history, controlled reload, and rollback. | Remaining; the installer must not expose secrets or grant Forgejo permission to rewrite arbitrary service environment files |
 
 ## Carefully Scoped Capability Work
 
