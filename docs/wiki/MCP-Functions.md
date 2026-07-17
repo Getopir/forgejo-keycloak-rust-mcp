@@ -1,6 +1,6 @@
 # MCP Functions
 
-Release `2.0.0` targets Forgejo `16.0.0` only. When a Forgejo URL is configured,
+Release `2.1.0` targets Forgejo `16.0.0` only. When a Forgejo URL is configured,
 the daemon verifies `/api/v1/version` before listening. `GET /health` reports
 both `required_forgejo_version` and `verified_forgejo_version`.
 
@@ -16,6 +16,7 @@ The current release exposes:
 
 - `gateway_probe`
 - `list_repository_metadata`
+- `get_branch_status`
 - `list_repository_issues`
 - `create_issue`
 - `create_issue_comment`
@@ -38,6 +39,11 @@ The current release exposes:
 - `delete_repository`
 
 `gateway_probe` returns identity and policy metadata. `list_repository_metadata` executes a read-only Forgejo API lookup when principal mapping and Forgejo URL settings are configured.
+
+`get_branch_status` accepts `owner/repository@branch` or
+`forgejo://branch/owner/repository/branch` with `forgejo:repo:read`. It requires
+no approval and returns at most 50 required contexts and 50 commit statuses.
+Branch and status documents are capped at 64 KiB and 256 KiB respectively.
 
 Phase 2 baseline tools:
 
@@ -70,13 +76,14 @@ List operations accept `limit` and `cursor`. The server caps `limit` with `FORGE
 Resource summaries include stable `forgejo://...` resource URIs. Examples:
 
 - `forgejo://repository/GetOpir/forgejo-keycloak-rust-mcp`
+- `forgejo://branch/GetOpir/forgejo-keycloak-rust-mcp/main`
 - `forgejo://issue/GetOpir/forgejo-keycloak-rust-mcp/1`
 - `forgejo://pull/GetOpir/forgejo-keycloak-rust-mcp/1`
 - `forgejo://release/GetOpir/forgejo-keycloak-rust-mcp/v0.10.0`
 - `forgejo://notification/123`
 - `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `2.0.0` release supports bounded per-agent admission control, pull-request diff inspection, evidence-backed review submission, additive issue creation, atomic approval consumption for approval-backed mutations, pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, bounded outbound Forgejo requests, safe credential-reference status, generated API classification coverage, capability discovery, Forgejo 16 startup verification, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `2.1.0` release supports bounded branch-status readback, per-agent admission control, pull-request diff inspection, evidence-backed review submission, additive issue creation, atomic approval consumption for approval-backed mutations, pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, bounded outbound Forgejo requests, safe credential-reference status, generated API classification coverage, capability discovery, Forgejo 16 startup verification, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 
@@ -97,6 +104,7 @@ Coverage examples:
 
 ```sh
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
+forgejo-mcpctl branch-status GetOpir/forgejo-keycloak-rust-mcp@main
 forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25
 forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp --head feature-branch --base main --title "Add feature" --dry-run
 forgejo-mcpctl create-issue GetOpir/forgejo-keycloak-rust-mcp --title "Repair MCP adapter coverage"

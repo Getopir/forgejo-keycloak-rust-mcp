@@ -7,8 +7,8 @@ Generated from the pinned Forgejo Swagger document.
 - SHA-256: `a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84`
 - Refresh review: `docs/generated/forgejo-api-coverage-review-16.0.0.md`
 - Total operations: `506`
-- Semantic overlay operations: `18`
-- Disabled metadata-only operations: `488`
+- Semantic overlay operations: `20`
+- Disabled metadata-only operations: `486`
 - Approval-required operations: `282`
 - Destructive operations: `74`
 - Admin operations: `51`
@@ -54,6 +54,8 @@ scope, risk class, output limit, and approval policy.
 | --- | --- | --- | --- | --- | --- |
 | `list_notifications` | `GET` | `/notifications` | `notifyGetList` | `read_private` | `no` |
 | `list_repository_metadata` | `GET` | `/repos/{owner}/{repo}` | `repoGet` | `read_private` | `no` |
+| `get_branch_status` | `GET` | `/repos/{owner}/{repo}/branches/{branch}` | `repoGetBranch` | `read_private` | `no` |
+| `get_branch_status` | `GET` | `/repos/{owner}/{repo}/commits/{ref}/status` | `repoGetCombinedStatusByRef` | `read_private` | `no` |
 | `list_repository_issues` | `GET` | `/repos/{owner}/{repo}/issues` | `issueListIssues` | `read_private` | `no` |
 | `create_issue` | `POST` | `/repos/{owner}/{repo}/issues` | `issueCreateIssue` | `write_mutating` | `yes` |
 | `create_issue_comment` | `POST` | `/repos/{owner}/{repo}/issues/{index}/comments` | `issueCreateComment` | `write_additive` | `no` |

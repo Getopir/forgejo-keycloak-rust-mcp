@@ -109,7 +109,7 @@ Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` out of source control.
    `GET /api/v1/version` reports `16.0.0` with optional build metadata.
 2. Back up the gateway executable, service unit, non-secret configuration,
    approval store, and audit log according to their retention policies.
-3. Install `forgejo-keycloak-rust-mcp` `2.0.0` and restart the service.
+3. Install `forgejo-keycloak-rust-mcp` `2.1.0` and restart the service.
 4. Confirm `/health` reports `required_forgejo_version` as `16.0.0` and a
    non-null matching `verified_forgejo_version`.
 5. Verify capability metadata, one expected denial, and one authorized

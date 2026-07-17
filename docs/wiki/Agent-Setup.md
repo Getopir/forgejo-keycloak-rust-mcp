@@ -54,4 +54,4 @@ forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp \
   --dry-run
 ```
 
-Execution requires an exact-payload approval record created by a different mapped principal. Current PR lifecycle support covers PR creation, PR listing, review listing, issue/PR comments, approval-gated merge, and release publication. Standalone PR update, standalone reviewer request, branch status, required checks, and PR check readback remain planned disabled capabilities.
+Execution requires an exact-payload approval record created by a different mapped principal. Current PR lifecycle support covers bounded branch-status readback, PR creation, PR listing, review listing, issue/PR comments, approval-gated merge, and release publication. Standalone PR update, standalone reviewer request, required checks, and PR check readback remain planned disabled capabilities.

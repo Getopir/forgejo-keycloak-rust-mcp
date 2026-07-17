@@ -1,7 +1,7 @@
 # Project Status
 
 The original Phase 0–3 roadmap is complete as a product-baseline plan. The
-gateway is on the stable `2.0.0` line; current capability and security posture
+gateway is on the stable `2.1.0` line; current capability and security posture
 are documented in the pages linked below rather than repeated as historical
 phase prose.
 
@@ -22,7 +22,7 @@ in `2.0.0` and then one reviewed semantic operation per later minor release. See
   issue creation, PR creation and merge, release creation, PR review
   submission, and wiki publication.
 - Pinned Forgejo API classification: all 506 upstream operations are assessed;
-  only 18 reviewed semantic-overlay operations are executable.
+  only 20 reviewed semantic-overlay endpoints are executable.
 
 ## Intentional boundaries
 

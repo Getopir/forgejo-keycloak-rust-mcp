@@ -1,6 +1,6 @@
 # Generated API Coverage
 
-Version `2.0.0` pins the Forgejo API metadata and classifies it before
+Version `2.1.0` uses the pinned Forgejo API metadata and classifies it before
 any generated endpoint can become an MCP tool.
 
 ## Pinned Source
@@ -14,14 +14,18 @@ any generated endpoint can become an MCP tool.
 ## Current Coverage
 
 - Total operations: 506
-- Semantic-overlay operations: 18
-- Disabled metadata-only operations: 488
+- Semantic-overlay operations: 20
+- Disabled metadata-only operations: 486
 
 The semantic overlay connects reviewed Forgejo endpoints to named MCP
-operations such as `list_repository_metadata`, `list_repository_issues`,
+operations such as `list_repository_metadata`, `get_branch_status`, `list_repository_issues`,
 `create_issue`, `list_pull_requests`, `create_pull_request`, `list_releases`,
 `create_release`, `list_wiki_pages`, `get_wiki_page`, `create_wiki_page`,
 `update_wiki_page`, and `merge_pull_request`.
+
+`get_branch_status` is the only semantic operation added in `2.1.0`. It maps
+`repoGetBranch` and `repoGetCombinedStatusByRef`; no other disabled endpoint was
+enabled.
 
 ## Safety Rule
 

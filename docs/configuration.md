@@ -199,7 +199,10 @@ export FORGEJO_MCPD_AUDIT_LOG=/var/log/forgejo-mcpd/audit.jsonl
 
 The daemon opens this append-only file at startup and refuses to start if it cannot be opened. Each event is serialized as one JSON line, flushed, and synchronized to the filesystem before the write completes. Runtime write failures are reported through tracing. Place the file on persistent storage, restrict it to the gateway service account and audit readers, and configure the host's log rotation and retention policy. Do not place it in the repository, a web root, or ephemeral container storage.
 
-The record schema contains identity, policy, target, decision, approval, Forgejo status, and timing metadata. It intentionally excludes bearer tokens and downstream Forgejo credentials.
+The record schema contains identity, policy, target, decision (`allow`, `deny`,
+or `downstream_failure`), approval, Forgejo status, and timing metadata. It
+intentionally excludes bearer tokens, downstream response bodies, and Forgejo
+credentials.
 
 ## JWKS Lifecycle
 

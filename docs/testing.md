@@ -58,6 +58,12 @@ unreachable contract. Unit tests also assert that all existing semantic
 operations remain mapped to the pinned Forgejo 16 document while all 15 new
 upstream endpoints remain disabled.
 
+The `2.1.0` branch-status tests additionally cover typed and malformed targets,
+unknown and inapplicable request fields, scope denial, approval-free policy,
+encoded branch names, successful two-request readback, downstream failure,
+request timeout inheritance, 64 KiB and 256 KiB downstream byte caps, 50-item
+context/status caps, and bounded UTF-8 string fields.
+
 Unauthenticated `/mcp` requests should return `401`:
 
 ```sh
@@ -73,6 +79,8 @@ With a valid token, test these operation decisions:
 | --- | --- | --- |
 | `gateway_probe` | `forgejo:repo:read` | `200 allowed=true` |
 | `gateway_probe` | no `forgejo:repo:read` | `403 allowed=false` |
+| `get_branch_status` | `forgejo:repo:read` | `200 allowed=true approval_required=false` |
+| `get_branch_status` | no `forgejo:repo:read` | `403 allowed=false` before Forgejo access |
 | `create_pull_request` | `forgejo:pr:write` | `200 allowed=true approval_required=true` |
 | `merge_pull_request` | `forgejo:pr:merge` | `200 allowed=true approval_required=true` |
 | `delete_repository` | `forgejo:org:admin` | `200 allowed=true approval_required=true` |

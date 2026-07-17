@@ -20,6 +20,8 @@ HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head"}
 
 SEMANTIC_OVERLAY = {
     ("GET", "/repos/{owner}/{repo}"): "list_repository_metadata",
+    ("GET", "/repos/{owner}/{repo}/branches/{branch}"): "get_branch_status",
+    ("GET", "/repos/{owner}/{repo}/commits/{ref}/status"): "get_branch_status",
     ("GET", "/repos/{owner}/{repo}/issues"): "list_repository_issues",
     ("POST", "/repos/{owner}/{repo}/issues"): "create_issue",
     ("POST", "/repos/{owner}/{repo}/issues/{index}/comments"): "create_issue_comment",

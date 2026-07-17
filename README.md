@@ -21,7 +21,7 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 | `1.x` through `1.3.1` | Forgejo versions before `16.0.0` |
 | `2.x` starting with `2.0.0` | Forgejo `16.0.0` only |
 
-Version `2.0.0` verifies the configured Forgejo server through
+Version `2.1.0` verifies the configured Forgejo server through
 `/api/v1/version` before listening. It requires an exact `16.0.0` semantic core
 version and accepts Forgejo build metadata such as
 `16.0.0+gitea-1.22.0`.
@@ -46,12 +46,12 @@ This project does not copy or translate GPL implementation code from other Forge
 - Shipped: bounded per-agent token-bucket rate limiting with `429` retry guidance and denied audit records.
 - Shipped: unauthenticated capability discovery for agents and operators.
 - Shipped: generated Forgejo API classification coverage pinned to the Forgejo `16.0.0` Swagger document.
-- Remaining: standalone PR update, standalone reviewer-request, branch status, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
+- Shipped: bounded `get_branch_status` readback for one typed branch target and at most 50 commit-status summaries.
+- Remaining: standalone PR update, standalone reviewer-request, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
 
 ## Current Scope
 
-`2.0.0` establishes the Forgejo 16-only compatibility baseline without
-expanding the gateway's executable Forgejo capability surface. The stable
+`2.1.0` adds the first post-baseline Forgejo 16 semantic operation. The stable
 release line includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
@@ -62,6 +62,7 @@ release line includes:
 - Exposes an authenticated `/mcp` policy probe for agents.
 - Maps Keycloak `(issuer, subject)` principals to Forgejo accounts from an explicit local mapping file.
 - Executes read-only repository metadata lookup through Forgejo API using the mapped principal's configured token environment variable.
+- Reads a typed `owner/repository@branch` target with bounded branch, commit, protection, required-context, and combined-status summaries through the mapped principal.
 - Builds trusted reverse-proxy identity headers from the mapped principal for deployments that use Forgejo reverse-proxy authentication.
 - Rejects duplicate or malformed principal-map entries and caller-supplied trusted identity headers.
 - Lists bounded issue, pull-request, pull-request review, release, and notification summaries, and submits evidence-backed PR reviews as the mapped reviewer identity.
@@ -203,7 +204,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 2.0.0](docs/release-notes/2.0.0.md)
+- [Release Notes 2.1.0](docs/release-notes/2.1.0.md)
 - [Release Notes 1.2.11](docs/release-notes/1.2.11.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)

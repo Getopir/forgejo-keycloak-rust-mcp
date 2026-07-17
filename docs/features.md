@@ -5,7 +5,7 @@ The completed `1.x` line is the compatibility line for Forgejo versions before
 reviewed semantic operation per later minor release. See the
 [Forgejo 16 Release Plan](forgejo-16-release-plan.md).
 
-When a Forgejo URL is configured, `2.0.0` verifies `/api/v1/version` before
+When a Forgejo URL is configured, `2.1.0` verifies `/api/v1/version` before
 listening and exposes the required and verified versions in `/health`.
 
 ## Identity And Policy
@@ -33,6 +33,7 @@ Enabled mapped agents use bounded in-memory token buckets keyed by normalized Ke
 
 - `gateway_probe`
 - `list_repository_metadata`
+- `get_branch_status`
 - `list_repository_issues`
 - `create_issue`
 - `create_issue_comment`
@@ -71,7 +72,13 @@ High-risk operations use file-backed, single-use approval records:
 
 The gateway pins the Forgejo `16.0.0` Swagger document and classifies all 506 operations by target type, risk, approval requirement, and exposure. The 15 operations added since the `15.0.3` pin remain disabled metadata until separately reviewed for MCP exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. The current semantic overlay covers 18 reviewed endpoints and leaves 488 metadata-only endpoints disabled.
+`get_branch_status` accepts `owner/repository@branch` or a stable
+`forgejo://branch/owner/repository/branch` URI. It returns one branch, at most
+50 required contexts, and at most 50 commit statuses. Downstream branch and
+status documents are capped at 64 KiB and 256 KiB respectively and use the
+configured Forgejo request timeout.
+
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. The current semantic overlay covers 20 reviewed endpoints and leaves 486 metadata-only endpoints disabled.
 
 ## CLI
 
@@ -81,6 +88,7 @@ Examples:
 
 ```sh
 forgejo-mcpctl repository-metadata GetOpir/forgejo-keycloak-rust-mcp
+forgejo-mcpctl branch-status GetOpir/forgejo-keycloak-rust-mcp@main
 forgejo-mcpctl repository-issues GetOpir/forgejo-keycloak-rust-mcp --state open --limit 25
 forgejo-mcpctl create-issue GetOpir/forgejo-keycloak-rust-mcp --title "Repair MCP adapter coverage"
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25

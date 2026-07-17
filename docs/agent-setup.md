@@ -126,7 +126,7 @@ forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp \
   --approval-id "$APPROVAL_ID"
 ```
 
-Current PR lifecycle support covers branch-to-PR bootstrap, PR listing, review listing, approval-gated merge, comments, additive issue creation, wiki readback/publication, safe credential-reference status, and releases. Standalone PR update, standalone reviewer request, branch status, required checks, and PR check readback are intentionally listed as planned capabilities until their schemas and output limits are reviewed.
+Current PR lifecycle support covers bounded branch-status readback, branch-to-PR bootstrap, PR listing, review listing, approval-gated merge, comments, additive issue creation, wiki readback/publication, safe credential-reference status, and releases. Standalone PR update, standalone reviewer request, required checks, and PR check readback remain planned until their schemas and output limits are reviewed.
 
 ## Issue And Wiki Workflow
 

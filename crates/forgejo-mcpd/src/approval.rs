@@ -340,6 +340,7 @@ mod tests {
             body: Some("ship it".to_string()),
             approval_id: None,
             dry_run: false,
+            unknown_fields: Default::default(),
         }
     }
 

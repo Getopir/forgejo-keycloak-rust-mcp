@@ -5,7 +5,7 @@ The completed `1.x` line is the compatibility line for Forgejo versions before
 reviewed semantic operation per later minor release. See the
 [Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md).
 
-When a Forgejo URL is configured, `2.0.0` verifies `/api/v1/version` before
+When a Forgejo URL is configured, `2.1.0` verifies `/api/v1/version` before
 listening and exposes the required and verified versions in `/health`.
 
 ## Identity And Policy
@@ -30,6 +30,7 @@ listening and exposes the required and verified versions in `/health`.
 
 - `gateway_probe`
 - `list_repository_metadata`
+- `get_branch_status`
 - `list_repository_issues`
 - `create_issue_comment`
 - `list_pull_requests`
@@ -68,13 +69,19 @@ Admin and destructive execution remains disabled.
 ## Generated API Coverage
 
 The gateway pins the Forgejo `16.0.0` Swagger document and classifies all 506
-operations. The current semantic overlay covers 18 reviewed endpoints. The
-other 488 endpoints are metadata-only and disabled.
+operations. The current semantic overlay covers 20 reviewed endpoints. The
+other 486 endpoints are metadata-only and disabled.
+
+`get_branch_status` accepts `owner/repository@branch` or
+`forgejo://branch/owner/repository/branch`, requires `forgejo:repo:read`, and
+needs no approval. It returns at most 50 required contexts and 50 statuses with
+fixed 64 KiB and 256 KiB downstream document limits.
 
 Agents can inspect this safely:
 
 ```sh
 forgejo-mcpctl api-coverage --filter semantic_overlay --limit 25
+forgejo-mcpctl branch-status GetOpir/forgejo-keycloak-rust-mcp@main
 forgejo-mcpctl api-coverage --filter destructive --query repo --limit 25
 forgejo-mcpctl create-pull-request GetOpir/forgejo-keycloak-rust-mcp --head feature-branch --base main --title "Add feature" --dry-run
 ```

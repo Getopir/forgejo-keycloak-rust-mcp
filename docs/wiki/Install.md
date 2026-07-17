@@ -63,7 +63,7 @@ Keep Forgejo token values in runtime environment variables named by the principa
 
 Before upgrading from `1.3.1`, upgrade Forgejo to `16.0.0` and verify its
 `/api/v1/version` response. Back up the gateway binary, service configuration,
-approval store, and audit log, install `2.0.0`, restart, and confirm `/health`
+approval store, and audit log, install `2.1.0`, restart, and confirm `/health`
 reports the required and verified Forgejo versions. Then verify capabilities,
 an expected denial, and an authorized read.
 

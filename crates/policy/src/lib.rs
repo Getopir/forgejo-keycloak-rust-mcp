@@ -137,6 +137,13 @@ impl OperationRegistry {
                 description: "Read repository metadata through mapped Forgejo identity.",
             },
             Operation {
+                name: "get_branch_status",
+                scope: "forgejo:repo:read",
+                risk: RiskClass::ReadPrivate,
+                approval_required: false,
+                description: "Read one branch and at most 50 bounded commit-status summaries through mapped Forgejo identity.",
+            },
+            Operation {
                 name: "list_repository_issues",
                 scope: "forgejo:issue:read",
                 risk: RiskClass::ReadPrivate,
@@ -571,6 +578,8 @@ fn classify_risk(
 fn semantic_operation(method: &str, path: &str) -> Option<&'static str> {
     match (method, path) {
         ("GET", "/repos/{owner}/{repo}") => Some("list_repository_metadata"),
+        ("GET", "/repos/{owner}/{repo}/branches/{branch}") => Some("get_branch_status"),
+        ("GET", "/repos/{owner}/{repo}/commits/{ref}/status") => Some("get_branch_status"),
         ("GET", "/repos/{owner}/{repo}/issues") => Some("list_repository_issues"),
         ("POST", "/repos/{owner}/{repo}/issues") => Some("create_issue"),
         ("POST", "/repos/{owner}/{repo}/issues/{index}/comments") => Some("create_issue_comment"),
@@ -639,6 +648,22 @@ mod tests {
             .unwrap();
         assert!(decision.allowed);
         assert!(!decision.approval_required);
+    }
+
+    #[test]
+    fn branch_status_is_repo_read_scoped_and_never_requires_approval() {
+        let registry = OperationRegistry::current();
+        let denied = registry
+            .decide("get_branch_status", &BTreeSet::new())
+            .unwrap();
+        assert!(!denied.allowed);
+        assert_eq!(denied.required_scope, "forgejo:repo:read");
+
+        let scopes = BTreeSet::from(["forgejo:repo:read".to_string()]);
+        let allowed = registry.decide("get_branch_status", &scopes).unwrap();
+        assert!(allowed.allowed);
+        assert_eq!(allowed.risk, RiskClass::ReadPrivate);
+        assert!(!allowed.approval_required);
     }
 
     #[test]
@@ -735,7 +760,7 @@ mod tests {
             .iter()
             .filter(|endpoint| endpoint.exposure == EndpointExposure::SemanticOverlay)
             .count();
-        assert_eq!(semantic, 18);
+        assert_eq!(semantic, 20);
         assert!(
             catalog
                 .endpoints
@@ -801,6 +826,7 @@ mod tests {
             "create_release",
             "create_wiki_page",
             "get_pull_request_diff",
+            "get_branch_status",
             "get_wiki_page",
             "list_notifications",
             "list_pull_request_reviews",

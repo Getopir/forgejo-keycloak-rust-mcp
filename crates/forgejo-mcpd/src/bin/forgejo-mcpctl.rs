@@ -24,6 +24,7 @@ struct Cli {
 enum Command {
     GatewayProbe(TargetArgs),
     RepositoryMetadata(TargetArgs),
+    BranchStatus(TargetArgs),
     RepositoryIssues(ListTargetArgs),
     CreateIssue(CreateIssueArgs),
     IssueComment(CommentArgs),
@@ -317,6 +318,7 @@ impl Command {
             Command::RepositoryMetadata(args) => {
                 target_request("list_repository_metadata", args.target)
             }
+            Command::BranchStatus(args) => target_request("get_branch_status", args.target),
             Command::RepositoryIssues(args) => list_request(
                 "list_repository_issues",
                 Some(args.target),

@@ -42,6 +42,7 @@ pub enum PrincipalType {
 pub enum AuditDecision {
     Allow,
     Deny,
+    DownstreamFailure,
 }
 
 impl AuditEvent {
@@ -117,6 +118,14 @@ mod tests {
             .unwrap();
         assert_eq!(records.len(), 2);
         fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn downstream_failure_has_a_distinct_structured_decision() {
+        let mut event = test_event();
+        event.decision = AuditDecision::DownstreamFailure;
+        let value = serde_json::to_value(event).unwrap();
+        assert_eq!(value["decision"], "downstream_failure");
     }
 
     fn test_event() -> AuditEvent {

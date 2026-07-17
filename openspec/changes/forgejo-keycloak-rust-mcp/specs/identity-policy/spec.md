@@ -80,6 +80,28 @@ The gateway SHALL provide a read-only repository metadata operation that uses th
 
 The gateway SHALL provide a curated set of named Forgejo tools instead of arbitrary endpoint forwarding.
 
+#### Scenario: Bounded branch status readback
+
+- **WHEN** a mapped principal calls `get_branch_status` with a typed `owner/repository@branch` or `forgejo://branch/owner/repository/branch` target and `forgejo:repo:read`
+- **THEN** the gateway SHALL retrieve the branch and its combined commit status through the mapped principal
+- **AND** SHALL return only bounded branch, protection, required-context, commit, and status summary fields
+- **AND** SHALL return no more than 50 required contexts and 50 commit statuses
+- **AND** SHALL enforce fixed downstream response-byte and request-timeout limits
+- **AND** SHALL require no approval because the operation is read-only
+
+#### Scenario: Invalid branch status input
+
+- **WHEN** `get_branch_status` receives a missing or malformed branch target or any unsupported request field
+- **THEN** the gateway SHALL return `400`
+- **AND** SHALL NOT call Forgejo
+- **AND** SHALL record a structured denial audit event.
+
+#### Scenario: Branch status downstream failure
+
+- **WHEN** Forgejo rejects or cannot complete either branch-status lookup
+- **THEN** the gateway SHALL fail without returning partial or unbounded content
+- **AND** SHALL record a structured downstream-failure audit event without credentials or response bodies.
+
 #### Scenario: Bounded issue list
 
 - **WHEN** `list_repository_issues` is called with a mapped principal and required scope

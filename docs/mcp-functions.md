@@ -1,6 +1,6 @@
 # MCP Functions
 
-`2.0.0` exposes a hardened, curated MCP endpoint for Forgejo `16.0.0`. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, enforces bounded per-agent admission control, executes bounded read operations, reads bounded pull-request diffs, submits evidence-backed pull-request reviews, supports additive issue creation and issue or pull-request comments, creates pull requests after atomic single-use approval consumption with normalized readback, publishes wiki pages after approval, returns stable resource URIs, supports approval-backed pull-request merge and release creation, bounds outbound Forgejo HTTP requests, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and verifies the configured Forgejo version before listening.
+`2.1.0` exposes a hardened, curated MCP endpoint for Forgejo `16.0.0`. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, enforces bounded per-agent admission control, executes bounded repository and branch-status reads, reads bounded pull-request diffs, submits evidence-backed pull-request reviews, supports additive issue creation and issue or pull-request comments, creates pull requests after atomic single-use approval consumption with normalized readback, publishes wiki pages after approval, returns stable resource URIs, supports approval-backed pull-request merge and release creation, bounds outbound Forgejo HTTP requests, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and verifies the configured Forgejo version before listening.
 
 `submit_pull_request_review` records an evidence-backed `APPROVED` or
 `REQUEST_CHANGES` review as the mapped reviewer identity. It requires
@@ -103,6 +103,7 @@ Response fields:
 Resource summaries include `resource_uri` values. Current forms are:
 
 - `forgejo://repository/{owner}/{repo}`
+- `forgejo://branch/{owner}/{repo}/{branch}`
 - `forgejo://issue/{owner}/{repo}/{number}`
 - `forgejo://pull/{owner}/{repo}/{number}`
 - `forgejo://pull-review/{owner}/{repo}/{pull_number}/{review_id}`
@@ -117,6 +118,7 @@ Resource summaries include `resource_uri` values. Current forms are:
 | --- | --- | --- | --- | --- |
 | `gateway_probe` | `forgejo:repo:read` | Read private | No | Authenticates caller and returns policy decision metadata. |
 | `list_repository_metadata` | `forgejo:repo:read` | Read private | No | Maps the Keycloak principal to a Forgejo account and fetches bounded repository metadata through Forgejo API when Phase 1 config is present. |
+| `get_branch_status` | `forgejo:repo:read` | Read private | No | Returns one typed branch target, protection metadata, at most 50 required contexts, and at most 50 combined commit-status summaries. |
 | `list_repository_issues` | `forgejo:issue:read` | Read private | No | Lists bounded issue summaries for `owner/repository`. |
 | `create_issue` | `forgejo:issue:write` | Write additive | No | Creates a bounded Forgejo issue for `owner/repository`. |
 | `create_issue_comment` | `forgejo:issue:write` | Write additive | No | Creates an issue or pull-request conversation comment for `owner/repository#number`. |
@@ -177,6 +179,19 @@ Examples:
 ```json
 {"operation":"list_repository_issues","target":"GetOpir/forgejo-keycloak-rust-mcp","state":"open","limit":25}
 ```
+
+```json
+{"operation":"get_branch_status","target":"forgejo://branch/GetOpir/forgejo-keycloak-rust-mcp/main"}
+```
+
+`get_branch_status` also accepts `GetOpir/forgejo-keycloak-rust-mcp@main`.
+Only `operation` and `target` are accepted for this operation. The response
+contains fixed branch and commit fields, no more than 50 required contexts and
+50 status summaries, and explicit truncation counters. The branch document is
+capped at 64 KiB, the combined-status document at 256 KiB, and both calls use
+the configured Forgejo connect and request timeouts. The serialized operation
+result has a final 320 KiB ceiling. Forgejo remains the final
+repository ACL authority for the mapped principal.
 
 ```json
 {"operation":"list_pull_requests","target":"GetOpir/forgejo-keycloak-rust-mcp","state":"open","limit":25}

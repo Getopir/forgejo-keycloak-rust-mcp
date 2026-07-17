@@ -22,6 +22,12 @@ pub struct RepositoryTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BranchTarget {
+    pub repository: RepositoryTarget,
+    pub branch: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NumberedTarget {
     pub repository: RepositoryTarget,
     pub number: u64,
@@ -107,6 +113,63 @@ struct ForgejoUser {
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoServerVersion {
     version: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoBranch {
+    name: String,
+    #[serde(default)]
+    commit: Option<ForgejoPayloadCommit>,
+    #[serde(default)]
+    protected: Option<bool>,
+    #[serde(default)]
+    effective_branch_protection_name: Option<String>,
+    #[serde(default)]
+    enable_status_check: Option<bool>,
+    #[serde(default)]
+    required_approvals: Option<i64>,
+    #[serde(default)]
+    status_check_contexts: Option<Vec<String>>,
+    #[serde(default)]
+    user_can_merge: Option<bool>,
+    #[serde(default)]
+    user_can_push: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoPayloadCommit {
+    #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    timestamp: Option<String>,
+    #[serde(default)]
+    url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BranchStatusSummary {
+    pub resource_uri: String,
+    pub repository_uri: String,
+    pub branch: String,
+    pub commit_sha: Option<String>,
+    pub commit_message: Option<String>,
+    pub commit_timestamp: Option<String>,
+    pub commit_url: Option<String>,
+    pub protected: Option<bool>,
+    pub effective_branch_protection_name: Option<String>,
+    pub enable_status_check: Option<bool>,
+    pub required_approvals: Option<i64>,
+    pub required_contexts: Vec<String>,
+    pub required_contexts_truncated: bool,
+    pub user_can_merge: Option<bool>,
+    pub user_can_push: Option<bool>,
+    pub combined_state: Option<String>,
+    pub total_status_count: usize,
+    pub returned_status_count: usize,
+    pub statuses_truncated: bool,
+    pub statuses: Vec<CommitStatusSummary>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -560,6 +623,12 @@ pub enum ForgejoError {
     InvalidTarget,
     #[error("numbered target must be owner/repository#number")]
     InvalidNumberedTarget,
+    #[error(
+        "branch target must be owner/repository@branch or forgejo://branch/owner/repository/branch"
+    )]
+    InvalidBranchTarget,
+    #[error("Forgejo response exceeded the {limit}-byte operation limit")]
+    ResponseTooLarge { limit: usize },
     #[error("cursor must be a positive page number")]
     InvalidCursor,
     #[error("issue comment body is required")]
@@ -635,6 +704,12 @@ pub enum ForgejoError {
 }
 
 impl ForgejoClient {
+    pub const MAX_BRANCH_STATUSES: usize = 50;
+    pub const MAX_BRANCH_CONTEXTS: usize = 50;
+    pub const MAX_BRANCH_RESPONSE_BYTES: usize = 64 * 1024;
+    pub const MAX_STATUS_RESPONSE_BYTES: usize = 256 * 1024;
+    pub const MAX_BRANCH_OUTPUT_BYTES: usize = 320 * 1024;
+
     pub fn with_timeouts(
         base_url: impl Into<String>,
         connect_timeout: Duration,
@@ -709,6 +784,56 @@ impl ForgejoClient {
         Ok((
             RepositoryMetadata::from_repository(repository, target),
             status.as_u16(),
+        ))
+    }
+
+    pub async fn branch_status(
+        &self,
+        token: &str,
+        target: &BranchTarget,
+    ) -> Result<(BranchStatusSummary, u16), ForgejoError> {
+        let branch_url = format!(
+            "{}/api/v1/repos/{}/{}/branches/{}",
+            self.base_url,
+            target.repository.owner,
+            target.repository.repo,
+            percent_encode_path_segment(&target.branch)
+        );
+        let (branch, branch_status) = self
+            .get_json_bounded::<ForgejoBranch>(
+                token,
+                branch_url,
+                &[],
+                Self::MAX_BRANCH_RESPONSE_BYTES,
+            )
+            .await?;
+        let commit_sha = branch
+            .commit
+            .as_ref()
+            .and_then(|commit| non_empty(commit.id.clone()));
+        let combined = if let Some(sha) = commit_sha.as_deref() {
+            let status_url = format!(
+                "{}/api/v1/repos/{}/{}/commits/{}/status",
+                self.base_url,
+                target.repository.owner,
+                target.repository.repo,
+                percent_encode_path_segment(sha)
+            );
+            let (status, _) = self
+                .get_json_bounded::<ForgejoCombinedStatus>(
+                    token,
+                    status_url,
+                    &[],
+                    Self::MAX_STATUS_RESPONSE_BYTES,
+                )
+                .await?;
+            Some(status)
+        } else {
+            None
+        };
+        Ok((
+            BranchStatusSummary::from_forgejo(branch, combined, target),
+            branch_status,
         ))
     }
 
@@ -1666,6 +1791,34 @@ impl ForgejoClient {
         Ok((value, status.as_u16()))
     }
 
+    async fn get_json_bounded<T: for<'de> Deserialize<'de>>(
+        &self,
+        token: &str,
+        url: String,
+        query: &[(&'static str, String)],
+        max_bytes: usize,
+    ) -> Result<(T, u16), ForgejoError> {
+        let response = self
+            .http
+            .get(url)
+            .header(reqwest::header::AUTHORIZATION, format!("token {token}"))
+            .query(query)
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        let body = read_bounded_body(response, max_bytes).await?;
+        if !status.is_success() {
+            return Err(ForgejoError::Api {
+                status,
+                body: bounded_utf8(&body, 4096),
+            });
+        }
+        let value = serde_json::from_slice::<T>(&body)
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        Ok((value, status.as_u16()))
+    }
+
     async fn get_json_optional<T: for<'de> Deserialize<'de>>(
         &self,
         token: &str,
@@ -2025,6 +2178,55 @@ impl RepositoryTarget {
     }
 }
 
+impl BranchTarget {
+    pub fn parse(value: &str) -> Result<Self, ForgejoError> {
+        let (repository, branch) = if let Some(target) = value.strip_prefix("forgejo://branch/") {
+            let mut parts = target.splitn(3, '/');
+            let owner = parts.next().unwrap_or_default();
+            let repo = parts.next().unwrap_or_default();
+            let branch = parts.next().unwrap_or_default();
+            (RepositoryTarget::parse(&format!("{owner}/{repo}"))?, branch)
+        } else if let Some((repository, branch)) = value.rsplit_once('@') {
+            (RepositoryTarget::parse(repository)?, branch)
+        } else {
+            return Err(ForgejoError::InvalidBranchTarget);
+        };
+        let branch = branch.trim();
+        if !valid_branch_name(branch) {
+            return Err(ForgejoError::InvalidBranchTarget);
+        }
+        Ok(Self {
+            repository,
+            branch: branch.to_string(),
+        })
+    }
+
+    pub fn resource_uri(&self) -> String {
+        format!(
+            "forgejo://branch/{}/{}/{}",
+            self.repository.owner, self.repository.repo, self.branch
+        )
+    }
+}
+
+fn valid_branch_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 255
+        && value != "@"
+        && value != "."
+        && value != ".."
+        && !value.starts_with('/')
+        && !value.ends_with('/')
+        && !value.ends_with('.')
+        && !value.ends_with(".lock")
+        && !value.contains("..")
+        && !value.contains("//")
+        && !value.contains("@{")
+        && !value
+            .bytes()
+            .any(|byte| byte <= 0x20 || byte == 0x7f || b"~^:?*[\\".contains(&byte))
+}
+
 impl NumberedTarget {
     pub fn parse(value: &str) -> Result<Self, ForgejoError> {
         if let Some(target) = value.strip_prefix("forgejo://issue/") {
@@ -2152,6 +2354,72 @@ impl CommitStatusReadiness {
     }
 }
 
+impl BranchStatusSummary {
+    fn from_forgejo(
+        branch: ForgejoBranch,
+        combined: Option<ForgejoCombinedStatus>,
+        target: &BranchTarget,
+    ) -> Self {
+        let commit = branch.commit.unwrap_or(ForgejoPayloadCommit {
+            id: None,
+            message: None,
+            timestamp: None,
+            url: None,
+        });
+        let mut required_contexts = branch
+            .status_check_contexts
+            .unwrap_or_default()
+            .into_iter()
+            .map(|value| bounded_string(value, 256))
+            .collect::<Vec<_>>();
+        let required_contexts_truncated =
+            required_contexts.len() > ForgejoClient::MAX_BRANCH_CONTEXTS;
+        required_contexts.truncate(ForgejoClient::MAX_BRANCH_CONTEXTS);
+
+        let combined_state = combined.as_ref().and_then(|value| value.state.clone());
+        let declared_total = combined
+            .as_ref()
+            .and_then(|value| value.total_count)
+            .and_then(|value| usize::try_from(value).ok());
+        let mut statuses = combined
+            .and_then(|value| value.statuses)
+            .unwrap_or_default()
+            .into_iter()
+            .map(CommitStatusSummary::from_status_bounded)
+            .collect::<Vec<_>>();
+        let observed_total = statuses.len();
+        let total_status_count = declared_total.unwrap_or(observed_total).max(observed_total);
+        let statuses_truncated = statuses.len() > ForgejoClient::MAX_BRANCH_STATUSES
+            || total_status_count > ForgejoClient::MAX_BRANCH_STATUSES;
+        statuses.truncate(ForgejoClient::MAX_BRANCH_STATUSES);
+
+        Self {
+            resource_uri: target.resource_uri(),
+            repository_uri: target.repository.resource_uri(),
+            branch: bounded_string(branch.name, 255),
+            commit_sha: commit.id.map(|value| bounded_string(value, 128)),
+            commit_message: commit.message.map(|value| bounded_string(value, 1024)),
+            commit_timestamp: commit.timestamp.map(|value| bounded_string(value, 64)),
+            commit_url: commit.url.map(|value| bounded_string(value, 2048)),
+            protected: branch.protected,
+            effective_branch_protection_name: branch
+                .effective_branch_protection_name
+                .map(|value| bounded_string(value, 255)),
+            enable_status_check: branch.enable_status_check,
+            required_approvals: branch.required_approvals,
+            required_contexts,
+            required_contexts_truncated,
+            user_can_merge: branch.user_can_merge,
+            user_can_push: branch.user_can_push,
+            combined_state: combined_state.map(|value| bounded_string(value, 32)),
+            total_status_count,
+            returned_status_count: statuses.len(),
+            statuses_truncated,
+            statuses,
+        }
+    }
+}
+
 fn commit_status_readiness(
     value: ForgejoCombinedStatus,
     fallback_sha: &str,
@@ -2172,6 +2440,16 @@ impl CommitStatusSummary {
             target_url: non_empty(value.target_url),
             url: non_empty(value.url),
             description: non_empty(value.description),
+        }
+    }
+
+    fn from_status_bounded(value: ForgejoCommitStatus) -> Self {
+        Self {
+            context: value.context.map(|value| bounded_string(value, 256)),
+            status: value.status.map(|value| bounded_string(value, 32)),
+            target_url: value.target_url.map(|value| bounded_string(value, 2048)),
+            url: value.url.map(|value| bounded_string(value, 2048)),
+            description: value.description.map(|value| bounded_string(value, 512)),
         }
     }
 
@@ -2473,6 +2751,28 @@ fn bounded_utf8(bytes: &[u8], max_bytes: usize) -> String {
     decoded[..end].to_string()
 }
 
+fn bounded_string(value: String, max_bytes: usize) -> String {
+    bounded_utf8(value.as_bytes(), max_bytes)
+}
+
+async fn read_bounded_body(
+    mut response: reqwest::Response,
+    max_bytes: usize,
+) -> Result<Vec<u8>, ForgejoError> {
+    let mut body = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|err| ForgejoError::Request(err.to_string()))?
+    {
+        if body.len().saturating_add(chunk.len()) > max_bytes {
+            return Err(ForgejoError::ResponseTooLarge { limit: max_bytes });
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
 impl PullRequestBranchSummary {
     fn from_forgejo_branch(value: ForgejoPullRequestBranch) -> Option<Self> {
         let ref_name = non_empty(value.ref_name);
@@ -2598,6 +2898,42 @@ mod tests {
             )
             .unwrap();
             request_line
+        });
+        (address, server)
+    }
+
+    fn spawn_json_sequence(
+        responses: Vec<(&str, String)>,
+    ) -> (std::net::SocketAddr, std::thread::JoinHandle<Vec<String>>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let responses = responses
+            .into_iter()
+            .map(|(status, body)| (status.to_string(), body))
+            .collect::<Vec<_>>();
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for (status, body) in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut request_line = String::new();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                reader.read_line(&mut request_line).unwrap();
+                loop {
+                    let mut line = String::new();
+                    reader.read_line(&mut line).unwrap();
+                    if line == "\r\n" || line.is_empty() {
+                        break;
+                    }
+                }
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+                requests.push(request_line);
+            }
+            requests
         });
         (address, server)
     }
@@ -2743,6 +3079,159 @@ mod tests {
         );
         assert!(RepositoryTarget::parse("rawholding").is_err());
         assert!(RepositoryTarget::parse("rawholding/repo/extra").is_err());
+    }
+
+    #[test]
+    fn parses_typed_branch_targets_and_rejects_malformed_names() {
+        let target = BranchTarget::parse("rawholding/example@feature/branch").unwrap();
+        assert_eq!(target.repository.owner, "rawholding");
+        assert_eq!(target.repository.repo, "example");
+        assert_eq!(target.branch, "feature/branch");
+        assert_eq!(
+            target.resource_uri(),
+            "forgejo://branch/rawholding/example/feature/branch"
+        );
+        let uri = BranchTarget::parse("forgejo://branch/rawholding/example/main").unwrap();
+        assert_eq!(uri.branch, "main");
+        for invalid in [
+            "rawholding/example",
+            "rawholding/example@",
+            "rawholding/example@bad name",
+            "rawholding/example@bad..name",
+            "rawholding/example@bad.lock",
+        ] {
+            assert!(BranchTarget::parse(invalid).is_err(), "accepted {invalid}");
+        }
+    }
+
+    #[tokio::test]
+    async fn branch_status_returns_typed_bounded_summary() {
+        let branch = serde_json::json!({
+            "name": "feature/branch",
+            "commit": {"id": "abc123", "message": "ready", "timestamp": "2026-07-17T12:00:00Z"},
+            "protected": true,
+            "effective_branch_protection_name": "feature/*",
+            "enable_status_check": true,
+            "required_approvals": 2,
+            "status_check_contexts": ["ci/test"],
+            "user_can_merge": true,
+            "user_can_push": false
+        })
+        .to_string();
+        let combined = serde_json::json!({
+            "sha": "abc123",
+            "state": "success",
+            "total_count": 1,
+            "statuses": [{"context": "ci/test", "status": "success", "description": "passed"}]
+        })
+        .to_string();
+        let (address, server) = spawn_json_sequence(vec![("200 OK", branch), ("200 OK", combined)]);
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        let target = BranchTarget::parse("rawholding/example@feature/branch").unwrap();
+
+        let (summary, status) = client.branch_status("token", &target).await.unwrap();
+
+        assert_eq!(status, 200);
+        assert_eq!(summary.branch, "feature/branch");
+        assert_eq!(summary.commit_sha.as_deref(), Some("abc123"));
+        assert_eq!(summary.combined_state.as_deref(), Some("success"));
+        assert_eq!(summary.returned_status_count, 1);
+        assert!(!summary.statuses_truncated);
+        assert_eq!(summary.required_contexts, vec!["ci/test"]);
+        let requests = server.join().unwrap();
+        assert_eq!(
+            requests[0],
+            "GET /api/v1/repos/rawholding/example/branches/feature%2Fbranch HTTP/1.1\r\n"
+        );
+        assert_eq!(
+            requests[1],
+            "GET /api/v1/repos/rawholding/example/commits/abc123/status HTTP/1.1\r\n"
+        );
+    }
+
+    #[tokio::test]
+    async fn branch_status_reports_downstream_failure_and_byte_limit() {
+        let (address, server) = spawn_json_sequence(vec![(
+            "502 Bad Gateway",
+            r#"{"message":"downstream unavailable"}"#.to_string(),
+        )]);
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        let target = BranchTarget::parse("rawholding/example@main").unwrap();
+        assert!(matches!(
+            client.branch_status("token", &target).await,
+            Err(ForgejoError::Api { status, .. }) if status == StatusCode::BAD_GATEWAY
+        ));
+        server.join().unwrap();
+
+        let oversized = format!(
+            r#"{{"name":"main","padding":"{}"}}"#,
+            "x".repeat(ForgejoClient::MAX_BRANCH_RESPONSE_BYTES)
+        );
+        let (address, server) = spawn_json_sequence(vec![("200 OK", oversized)]);
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        assert!(matches!(
+            client.branch_status("token", &target).await,
+            Err(ForgejoError::ResponseTooLarge { .. })
+        ));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn branch_status_caps_items_and_string_fields() {
+        let target = BranchTarget::parse("rawholding/example@main").unwrap();
+        let statuses = (0..55)
+            .map(|index| {
+                serde_json::json!({
+                    "context": format!("check-{index}-{}", "x".repeat(300)),
+                    "status": "success",
+                    "description": "y".repeat(700)
+                })
+            })
+            .collect::<Vec<_>>();
+        let branch = serde_json::from_value::<ForgejoBranch>(serde_json::json!({
+            "name": "main",
+            "commit": {"id": "abc123", "message": "z".repeat(1500)},
+            "status_check_contexts": (0..55).map(|i| format!("required-{i}")).collect::<Vec<_>>()
+        }))
+        .unwrap();
+        let combined = serde_json::from_value::<ForgejoCombinedStatus>(serde_json::json!({
+            "state": "success", "total_count": 55, "statuses": statuses
+        }))
+        .unwrap();
+
+        let summary = BranchStatusSummary::from_forgejo(branch, Some(combined), &target);
+
+        assert_eq!(
+            summary.returned_status_count,
+            ForgejoClient::MAX_BRANCH_STATUSES
+        );
+        assert!(summary.statuses_truncated);
+        assert_eq!(
+            summary.required_contexts.len(),
+            ForgejoClient::MAX_BRANCH_CONTEXTS
+        );
+        assert!(summary.required_contexts_truncated);
+        assert!(summary.commit_message.as_ref().unwrap().len() <= 1024);
+        assert!(summary.statuses[0].context.as_ref().unwrap().len() <= 256);
+        assert!(summary.statuses[0].description.as_ref().unwrap().len() <= 512);
+        assert!(
+            serde_json::to_vec(&summary).unwrap().len() <= ForgejoClient::MAX_BRANCH_OUTPUT_BYTES
+        );
     }
 
     #[test]

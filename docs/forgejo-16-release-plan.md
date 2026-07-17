@@ -51,7 +51,7 @@ Every new operation must satisfy all of these requirements before release:
 | Version | Issue | Deliverable | Approval policy |
 | --- | --- | --- | --- |
 | `2.0.0` | [#1](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/1) | Complete: established and verified the Forgejo 16-only compatibility baseline | No new operation |
-| `2.1.0` | [#2](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/2) | Add bounded `get_branch_status` | Read; no approval |
+| `2.1.0` | [#2](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/2) | Complete: added bounded `get_branch_status` with typed branch targets and combined status summaries | Read; no approval |
 | `2.2.0` | [#3](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/3) | Add bounded `get_required_checks` | Read; no approval |
 | `2.3.0` | [#4](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/4) | Add bounded `get_pr_checks` | Read; no approval |
 | `2.4.0` | [#5](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/issues/5) | Add `update_pull_request` | Exact-payload approval |

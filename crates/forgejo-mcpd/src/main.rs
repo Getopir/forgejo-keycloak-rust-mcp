@@ -10,15 +10,15 @@ use axum::routing::{get, post};
 use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
-    CreateIssueOptions, CreatePullRequestOptions, CreateReleaseOptions, ForgejoClient,
-    ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest, REQUIRED_FORGEJO_VERSION,
-    RepositoryMetadata, RepositoryTarget, WikiPageOptions,
+    BranchTarget, CreateIssueOptions, CreatePullRequestOptions, CreateReleaseOptions,
+    ForgejoClient, ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest,
+    REQUIRED_FORGEJO_VERSION, RepositoryMetadata, RepositoryTarget, WikiPageOptions,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
 use principal::{DelegatedHeader, PrincipalMapper, PrincipalMapping, TrustedHeaderConfig};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -180,6 +180,8 @@ struct McpProbeRequest {
     approval_id: Option<String>,
     #[serde(default)]
     dry_run: bool,
+    #[serde(flatten)]
+    unknown_fields: BTreeMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -423,13 +425,6 @@ async fn capabilities(State(state): State<AppState>) -> Json<Capabilities> {
                 reason: "reviewer requests are currently available only inside create_pull_request",
             },
             PlannedOperation {
-                name: "get_branch_status",
-                scope: "forgejo:repo:read",
-                risk: "read_private",
-                approval_required: false,
-                reason: "planned read operation for branch-to-PR automation",
-            },
-            PlannedOperation {
                 name: "get_required_checks",
                 scope: "forgejo:repo:read",
                 risk: "read_private",
@@ -591,6 +586,9 @@ async fn mcp_handler(
             "list_repository_metadata" => {
                 return repository_metadata_response(request_id, state, principal, body, decision)
                     .await;
+            }
+            "get_branch_status" => {
+                return branch_status_response(request_id, state, principal, body, decision).await;
             }
             "credential_reference_status" => {
                 return credential_reference_status_response(
@@ -1794,6 +1792,164 @@ async fn repository_metadata_response(
         .into_response()
 }
 
+async fn branch_status_response(
+    request_id: Uuid,
+    state: AppState,
+    principal: identity::Principal,
+    body: McpProbeRequest,
+    decision: policy::PolicyDecision,
+) -> axum::response::Response {
+    let mapping = state
+        .principal_mapper
+        .as_ref()
+        .and_then(|mapper| mapper.resolve(&principal).ok());
+    if let Some(error) = branch_status_request_error(&body) {
+        audit_decision(
+            request_id,
+            &principal,
+            mapping,
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return error_response(StatusCode::BAD_REQUEST, request_id, error);
+    }
+    let target_text = match body.target.as_deref() {
+        Some(target) => target,
+        None => {
+            audit_decision(
+                request_id,
+                &principal,
+                mapping,
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                request_id,
+                "target is required for get_branch_status",
+            );
+        }
+    };
+    let target = match BranchTarget::parse(target_text) {
+        Ok(target) => target,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                mapping,
+                &body,
+                &decision,
+                AuditDecision::Deny,
+                None,
+            );
+            return error_response(StatusCode::BAD_REQUEST, request_id, &err.to_string());
+        }
+    };
+    let access = match forgejo_access(&state, &principal, request_id) {
+        Ok(access) => access,
+        Err(response) => return response,
+    };
+    let (summary, forgejo_status) = match access.forgejo.branch_status(&access.token, &target).await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            audit_decision(
+                request_id,
+                &principal,
+                Some(&access.mapping),
+                &body,
+                &decision,
+                AuditDecision::DownstreamFailure,
+                forgejo_status_from_error(&err),
+            );
+            return forgejo_error_response(request_id, "Forgejo branch status lookup failed", err);
+        }
+    };
+    let result = serde_json::to_value(summary).unwrap_or_default();
+    let response_bytes = serde_json::to_vec(&result).map_or(0, |value| value.len());
+    if response_bytes > ForgejoClient::MAX_BRANCH_OUTPUT_BYTES {
+        audit_decision(
+            request_id,
+            &principal,
+            Some(&access.mapping),
+            &body,
+            &decision,
+            AuditDecision::DownstreamFailure,
+            Some(forgejo_status),
+        );
+        return error_response(
+            StatusCode::BAD_GATEWAY,
+            request_id,
+            "bounded branch status output exceeded the operation limit",
+        );
+    }
+    let event = AuditEvent {
+        request_id,
+        issuer: principal.issuer.clone(),
+        subject: principal.subject.clone(),
+        oauth_client: principal.oauth_client.clone(),
+        principal_type: PrincipalType::from(access.mapping.principal_type),
+        forgejo_user_id: access.mapping.forgejo_user_id,
+        forgejo_login: Some(access.mapping.forgejo_login.clone()),
+        tool: body.operation.clone(),
+        target: body.target.clone(),
+        risk: decision.risk,
+        decision: AuditDecision::Allow,
+        approval_id: None,
+        forgejo_status: Some(forgejo_status),
+        duration_ms: 0,
+        response_bytes,
+    };
+    record_audit(&event);
+    (
+        StatusCode::OK,
+        Json(McpResponse {
+            request_id,
+            subject: principal.subject,
+            oauth_client: principal.oauth_client,
+            preferred_username: principal.preferred_username,
+            forgejo_login: Some(access.mapping.forgejo_login.clone()),
+            forgejo_user_id: access.mapping.forgejo_user_id,
+            trusted_delegation_headers: state.trusted_headers.delegated_headers(&access.mapping),
+            operation: body.operation,
+            allowed: true,
+            reason: "required scope present and bounded Forgejo branch status returned".to_string(),
+            required_scope: decision.required_scope.to_string(),
+            approval_required: decision.approval_required,
+            target: body.target,
+            repository: None,
+            result: Some(result),
+            limit: Some(ForgejoClient::MAX_BRANCH_STATUSES as u32),
+            next_cursor: None,
+        }),
+    )
+        .into_response()
+}
+
+fn branch_status_request_error(body: &McpProbeRequest) -> Option<&'static str> {
+    (body.requested_operation.is_some()
+        || body.query.is_some()
+        || body.limit.is_some()
+        || body.cursor.is_some()
+        || body.state.is_some()
+        || body.body.is_some()
+        || body.approval_id.is_some()
+        || body.dry_run
+        || !body.unknown_fields.is_empty())
+    .then_some("get_branch_status accepts only operation and target fields")
+}
+
+fn forgejo_status_from_error(error: &ForgejoError) -> Option<u16> {
+    match error {
+        ForgejoError::Api { status, .. } => Some(status.as_u16()),
+        _ => None,
+    }
+}
+
 fn forgejo_api_coverage_response(
     request_id: Uuid,
     state: AppState,
@@ -2635,7 +2791,10 @@ fn error_response(status: StatusCode, request_id: Uuid, error: &str) -> axum::re
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_forgejo_timeout_config, validate_rate_limit_config, validate_tls_urls};
+    use super::{
+        McpProbeRequest, branch_status_request_error, validate_forgejo_timeout_config,
+        validate_rate_limit_config, validate_tls_urls,
+    };
 
     #[test]
     fn tls_flag_requires_https_resource() {
@@ -2677,5 +2836,35 @@ mod tests {
         assert!(validate_forgejo_timeout_config(5, 30).is_ok());
         assert!(validate_forgejo_timeout_config(0, 30).is_err());
         assert!(validate_forgejo_timeout_config(5, 0).is_err());
+    }
+
+    #[test]
+    fn branch_status_rejects_unknown_and_operation_inapplicable_input() {
+        let request = serde_json::from_value::<McpProbeRequest>(serde_json::json!({
+            "operation": "get_branch_status",
+            "target": "rawholding/example@main",
+            "unknown": true
+        }))
+        .unwrap();
+        assert_eq!(
+            branch_status_request_error(&request),
+            Some("get_branch_status accepts only operation and target fields")
+        );
+        let request = serde_json::from_value::<McpProbeRequest>(serde_json::json!({
+            "operation": "get_branch_status",
+            "target": "rawholding/example@main",
+            "query": "not-applicable"
+        }))
+        .unwrap();
+        assert_eq!(
+            branch_status_request_error(&request),
+            Some("get_branch_status accepts only operation and target fields")
+        );
+        let request = serde_json::from_value::<McpProbeRequest>(serde_json::json!({
+            "operation": "get_branch_status",
+            "target": "rawholding/example@main"
+        }))
+        .unwrap();
+        assert_eq!(branch_status_request_error(&request), None);
     }
 }
