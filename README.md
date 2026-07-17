@@ -1,5 +1,6 @@
 # forgejo-keycloak-rust-mcp
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13642/badge)](https://www.bestpractices.dev/projects/13642)
 
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
@@ -13,11 +14,11 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 > pull requests, reviews, discussions, and other contributions are not
 > monitored or accepted. Submit all issues and contributions on Codeberg.
 
-Version `1.2.11` means:
+Version `1.3.0` means:
 
 - `1`: first stable public release line.
-- `2`: PR/source-authority hygiene feature series.
-- `7`: seventh repair release in this feature series.
+- `3`: public assurance and OpenSSF badge feature series.
+- `0`: initial release in this feature series.
 
 The governing rule is:
 
@@ -39,7 +40,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.2.11` publishes and enforces majority domain-code coverage thresholds without expanding the gateway's executable Forgejo capability surface. The `1.2` feature series includes:
+`1.3.0` publishes the verified OpenSSF Best Practices Passing badge without expanding the gateway's executable Forgejo capability surface. The stable release line includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -184,6 +185,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
+- [Release Notes 1.3.0](docs/release-notes/1.3.0.md)
 - [Release Notes 1.2.11](docs/release-notes/1.2.11.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)

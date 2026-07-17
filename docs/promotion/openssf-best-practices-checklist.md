@@ -6,6 +6,10 @@ OpenSSF Best Practices Badge service: `https://www.bestpractices.dev/en`
 
 Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 
+OpenSSF project ID: `13642`
+
+Earned badge: [Passing](https://www.bestpractices.dev/projects/13642), first achieved 2026-07-17
+
 ## Current Evidence
 
 | Area | Current Status | Evidence |
@@ -19,14 +23,14 @@ Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 | Contribution process | Ready | `CONTRIBUTING.md`, including test, license, security, and AI-assisted contribution rules. |
 | Roadmap | Ready | `docs/wiki/Roadmap.md`. |
 | Release notes | Ready | Hosted releases and `docs/release-notes/`. |
-| Automation proposal | Ready | Root `.bestpractices.json` contains evidence-backed proposed answers for maintainer review. |
+| OpenSSF Passing badge | Earned | Project `13642` reports `badge_level=passing` and 100% passing-series completion. |
+| Automation proposal | Complete | Root `.bestpractices.json` records the assigned project and evidence-backed answers. |
 
-## Gaps To Close
+## Follow-Up Work
 
-- Log in to `bestpractices.dev` as an authorized maintainer, create the entry for the Codeberg repository, choose the metal/passing series, review the automated `.bestpractices.json` proposals, and save only claims verified by the maintainer. The baseline series can be completed separately.
 - Complete any criteria that depend on hosted settings not visible in the repository, including maintainer MFA and effective default-branch protection.
-- Record the assigned numeric project ID here and add the service-generated badge only after the corresponding badge level is actually earned.
+- Review Silver and OpenSSF Baseline criteria separately; the `1.3.0` release claims only the earned Passing badge.
 
-## Suggested Badge Claim
+## Verified Badge Claim
 
-The public repository currently has no matching OpenSSF entry. Do not add a badge to `README.md` until `https://www.bestpractices.dev/projects.json?url=https%3A%2F%2Fcodeberg.org%2FGetOpir%2Fforgejo-keycloak-rust-mcp` returns the maintainer-created entry and that entry reports an earned badge level. An in-progress or fabricated badge would misrepresent the external self-certification state.
+The public OpenSSF API returns project `13642` for the canonical Codeberg URL and reports `badge_level=passing`, `passing_saved=true`, and an achieved timestamp. The README uses the service-generated badge URL and links directly to that entry.

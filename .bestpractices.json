@@ -1,5 +1,8 @@
 {
   "name": "forgejo-keycloak-rust-mcp",
+  "badge_project_id": 13642,
+  "badge_level": "passing",
+  "badge_url": "https://www.bestpractices.dev/projects/13642",
   "description": "A clean-room Rust MCP gateway for Forgejo with Keycloak identity, explicit operation authorization, approval gates, bounded responses, and Forgejo ACL enforcement.",
   "license": "AGPL-3.0-or-later",
   "implementation_languages": "Rust",

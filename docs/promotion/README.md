@@ -4,9 +4,9 @@ This folder contains public promotion and project-readiness material for `forgej
 
 ## Codeberg Release
 
-Create a Codeberg release for `v1.2.11` using the text in [codeberg-release-v1.2.11.md](codeberg-release-v1.2.11.md).
+Create a Codeberg release for `v1.3.0` using the text in [codeberg-release-v1.3.0.md](codeberg-release-v1.3.0.md).
 
-Codeberg releases are separate from Git tags. The `v1.2.11` tag should be pushed first, then the hosted release object and its signed source and SBOM assets must be created through the Codeberg frontend or API.
+Codeberg releases are separate from Git tags. The `v1.3.0` tag should be pushed first, then the hosted release object and its signed source and SBOM assets must be created through the Codeberg frontend or API.
 
 ## Codeberg Issues
 
@@ -15,4 +15,4 @@ the current [maintainer backlog](../wiki/Further-Planned-Improvements.md).
 
 ## OpenSSF Best Practices
 
-Start the OpenSSF Best Practices Badge checklist using [openssf-best-practices-checklist.md](openssf-best-practices-checklist.md).
+The verified OpenSSF Passing badge and follow-up criteria are recorded in [openssf-best-practices-checklist.md](openssf-best-practices-checklist.md).

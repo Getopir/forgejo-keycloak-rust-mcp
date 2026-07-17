@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.11`, not a restatement of the
+This is the short, current backlog after `1.3.0`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -11,7 +11,7 @@ no commitment to enable every Forgejo API endpoint.
 | Complete REUSE copyright metadata for maintained source files. | Complete in `1.2.2` via `REUSE.toml` and `LICENSES/` |
 | Produce signed release artifacts and document verification. | Complete in `1.2.3`; see [Release Artifact Verification](Release-Artifact-Verification.md) |
 | Attach the CI-generated CycloneDX SBOM to hosted releases. | Complete in `1.2.4`; CI validates SBOM generation and the release workflow attaches the generated documents to Forgejo releases |
-| Finish the OpenSSF project entry/badge after public-hosting prerequisites are met. | Public-hosting evidence and `.bestpractices.json` proposal included in `1.2.7`; external entry creation and self-certification require a maintainer-authenticated `bestpractices.dev` session before a real badge ID can be published |
+| Finish the OpenSSF project entry/badge after public-hosting prerequisites are met. | Complete in `1.3.0`; OpenSSF project `13642` earned the Passing badge and the service-generated badge is published in the README and wiki |
 | Add automated dependency-update review with tests. | Complete in `1.2.4`; scheduled Renovate PRs run the normal pull-request CI suite |
 | Protect public default branches with required review and checks. | Release implementation ready in `1.2.4`; hosted Codeberg setting requires an organization-admin credential and verified check context |
 

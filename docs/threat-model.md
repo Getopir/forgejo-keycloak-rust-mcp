@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: maintained for release `1.2.11`
+Status: maintained for release `1.3.0`
 Last reviewed: 2026-07-17
 
 ## Scope And Security Objective

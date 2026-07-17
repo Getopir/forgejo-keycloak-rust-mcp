@@ -1,5 +1,7 @@
 # Forgejo Keycloak Rust MCP
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13642/badge)](https://www.bestpractices.dev/projects/13642)
+
 This wiki explains the public `forgejo-keycloak-rust-mcp` project for humans and agents.
 
 ## Purpose
@@ -31,4 +33,4 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `1.2.11`.
+Current public release: `1.3.0`.
