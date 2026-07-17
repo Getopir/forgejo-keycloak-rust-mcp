@@ -34,6 +34,7 @@ no commitment to enable every Forgejo API endpoint.
 | Improvement | Status |
 | --- | --- |
 | Demonstrate that automated tests cover most code branches, input fields, and functionality. | Remaining; add reproducible statement and branch coverage measurement to CI, publish the results, define documented thresholds, and close material gaps before claiming the OpenSSF `test_most` criterion |
+| Enforce maximally strict Rust warnings in CI. | Remaining; require `cargo clippy --workspace --all-targets -- -D warnings` as a mandatory CI check before claiming the OpenSSF `warnings_strict` criterion |
 
 ## Carefully Scoped Capability Work
 
