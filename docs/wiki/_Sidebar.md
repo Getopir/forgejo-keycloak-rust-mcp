@@ -7,6 +7,7 @@
 - [Crates.io Install](Crates-IO-Install.md)
 - [MCP Functions](MCP-Functions.md)
 - [Generated API Coverage](Generated-API-Coverage.md)
+- [Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md)
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Threat Model](Threat-Model.md)

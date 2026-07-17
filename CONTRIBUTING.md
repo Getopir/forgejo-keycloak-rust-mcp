@@ -27,6 +27,12 @@ the tests, and describing the verification in the pull request.
 - Never commit secrets, tokens, private keys, internal addresses, or production
   credentials.
 - Preserve bounded outputs, explicit authorization, and approval requirements.
+- Target one semantic operation per `2.x.0` feature release. Each operation must
+  define typed schemas, scope, bounds, audit behavior, approval policy, Forgejo
+  ACL enforcement, tests, documentation, and release evidence.
+- Use a patch release only for a compatible repair to an existing minor line.
+- Do not begin the next planned operation until the previous hosted release,
+  wiki, crates.io publication, deployment, and readback are complete.
 - Report security issues privately using [SECURITY.md](SECURITY.md).
 
 By contributing, you agree to license your contribution under

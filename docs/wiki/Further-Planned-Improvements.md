@@ -40,6 +40,12 @@ no commitment to enable every Forgejo API endpoint.
 
 ## Carefully Scoped Capability Work
 
+The `2.x` sequence, per-operation acceptance contract, repair-release rule, and
+stop-after-release evidence requirements are defined in the
+[Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md). Version `2.0.0` establishes
+Forgejo 16-only compatibility; each operation below then receives one minor
+release.
+
 | Improvement | Status |
 | --- | --- |
 | Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Complete; 506 operations classified, with all 15 additions kept disabled pending separate semantic review |

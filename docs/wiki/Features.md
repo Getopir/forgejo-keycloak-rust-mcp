@@ -1,6 +1,9 @@
 # Features
 
-`1.2.1` adds bounded pull-request diff inspection and evidence-backed review submission to the Forgejo Keycloak Rust MCP gateway.
+The current `1.x` line is the compatibility line for Forgejo versions before
+`16.0.0`. The planned `2.x` line targets Forgejo `16.0.0` only and enables one
+reviewed semantic operation per minor release. See the
+[Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md).
 
 ## Identity And Policy
 

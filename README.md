@@ -14,11 +14,20 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 > pull requests, reviews, discussions, and other contributions are not
 > monitored or accepted. Submit all issues and contributions on Codeberg.
 
-Version `1.3.1` means:
+## Version Compatibility
 
-- `1`: first stable public release line.
-- `3`: public assurance and OpenSSF badge feature series.
-- `0`: initial release in this feature series.
+| Release line | Supported Forgejo contract |
+| --- | --- |
+| `1.x` through `1.3.1` | Forgejo versions before `16.0.0` |
+| `2.x` starting with `2.0.0` | Forgejo `16.0.0` only |
+
+The repository already pins Forgejo 16 metadata for review, but that does not
+make the `1.x` runtime a Forgejo 16 compatibility promise. Version `2.0.0` will
+establish and verify that boundary before new Forgejo 16 operations ship.
+
+Each new semantic operation receives one `2.x.0` minor release. Compatible
+repairs increment the patch component, such as `2.2.1`. See the
+[Forgejo 16 Release Plan](docs/forgejo-16-release-plan.md).
 
 The governing rule is:
 
@@ -177,6 +186,7 @@ curl -sS \
 - [Features](docs/features.md)
 - [MCP Functions](docs/mcp-functions.md)
 - [Generated Forgejo API Coverage](docs/generated/forgejo-api-coverage.md)
+- [Forgejo 16 Release Plan](docs/forgejo-16-release-plan.md)
 - [Agent Setup](docs/agent-setup.md)
 - [Testing](docs/testing.md)
 - [Security Checks](docs/security-checks.md)

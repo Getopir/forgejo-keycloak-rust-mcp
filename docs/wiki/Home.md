@@ -16,6 +16,7 @@ The gateway lets agents prove identity through Keycloak before receiving policy 
 - [Crates.io Install](Crates-IO-Install.md)
 - [MCP Functions](MCP-Functions.md)
 - [Generated API Coverage](Generated-API-Coverage.md)
+- [Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md)
 - [Agent Setup](Agent-Setup.md)
 - [Security Model](Security-Model.md)
 - [Threat Model](Threat-Model.md)
@@ -34,3 +35,7 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 ## Release
 
 Current public release: `1.3.1`.
+
+The `1.x` line is the pre-Forgejo-16 compatibility line. The planned `2.x` line
+targets Forgejo `16.0.0` only and advances one reviewed semantic operation per
+minor release.

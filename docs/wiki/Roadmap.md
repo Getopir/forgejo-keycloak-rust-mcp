@@ -5,6 +5,11 @@ gateway is on the stable `1.3.1` line; current capability and security posture
 are documented in the pages linked below rather than repeated as historical
 phase prose.
 
+The `1.x` line is the pre-Forgejo-16 compatibility line. The planned `2.x`
+line targets Forgejo `16.0.0` only, beginning with the compatibility baseline
+in `2.0.0` and then one reviewed semantic operation per minor release. See the
+[Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md).
+
 ## Shipped
 
 - Keycloak authentication, explicit Keycloak-to-Forgejo principal mapping,
