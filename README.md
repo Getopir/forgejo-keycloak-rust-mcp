@@ -4,11 +4,11 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
-Version `1.2.6` means:
+Version `1.2.7` means:
 
 - `1`: first stable public release line.
 - `2`: PR/source-authority hygiene feature series.
-- `6`: sixth repair release in this feature series.
+- `7`: seventh repair release in this feature series.
 
 The governing rule is:
 
@@ -23,14 +23,14 @@ This project does not copy or translate GPL implementation code from other Forge
 - Shipped: curated bounded Forgejo tools, typed resource URIs, and CLI wrappers for common agent/operator calls.
 - Shipped: file-backed approval gates with exact payload and principal binding.
 - Shipped: single-use approval-backed pull-request creation, pull-request merges, and release creation with dry-run preview.
-- Shipped on main: bounded per-agent token-bucket rate limiting with `429` retry guidance and denied audit records.
+- Shipped: bounded per-agent token-bucket rate limiting with `429` retry guidance and denied audit records.
 - Shipped: unauthenticated capability discovery for agents and operators.
 - Shipped: generated Forgejo API classification coverage pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
 - Remaining: standalone PR update, standalone reviewer-request, branch status, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
 
 ## Current Scope
 
-`1.2.6` publishes the maintained threat model and releases the durable audit, JWKS lifecycle documentation, and pull-request secret-scanning work without expanding the gateway's executable capability surface. The `1.2` feature series includes:
+`1.2.7` adds bounded per-agent admission control and publishes OpenSSF evidence preparation without expanding the gateway's executable Forgejo capability surface. The `1.2` feature series includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -175,7 +175,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 1.2.6](docs/release-notes/1.2.6.md)
+- [Release Notes 1.2.7](docs/release-notes/1.2.7.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)
 - [Release Notes 1.2.2](docs/release-notes/1.2.2.md)

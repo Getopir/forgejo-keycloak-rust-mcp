@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.6`, not a restatement of the
+This is the short, current backlog after `1.2.7`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -11,7 +11,7 @@ no commitment to enable every Forgejo API endpoint.
 | Complete REUSE copyright metadata for maintained source files. | Complete in `1.2.2` via `REUSE.toml` and `LICENSES/` |
 | Produce signed release artifacts and document verification. | Complete in `1.2.3`; see [Release Artifact Verification](Release-Artifact-Verification.md) |
 | Attach the CI-generated CycloneDX SBOM to hosted releases. | Complete in `1.2.4`; CI validates SBOM generation and the release workflow attaches the generated documents to Forgejo releases |
-| Finish the OpenSSF project entry/badge after public-hosting prerequisites are met. | Public-hosting evidence and `.bestpractices.json` proposal complete on main; external entry creation and self-certification require a maintainer-authenticated `bestpractices.dev` session before a real badge ID can be published |
+| Finish the OpenSSF project entry/badge after public-hosting prerequisites are met. | Public-hosting evidence and `.bestpractices.json` proposal included in `1.2.7`; external entry creation and self-certification require a maintainer-authenticated `bestpractices.dev` session before a real badge ID can be published |
 | Add automated dependency-update review with tests. | Complete in `1.2.4`; scheduled Renovate PRs run the normal pull-request CI suite |
 | Protect public default branches with required review and checks. | Release implementation ready in `1.2.4`; hosted Codeberg setting requires an organization-admin credential and verified check context |
 
@@ -24,7 +24,7 @@ no commitment to enable every Forgejo API endpoint.
 | Document JWKS cache limits and key-rotation behaviour. | Complete in `1.2.6`; see [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md) |
 | Export structured audit records to a durable sink. | Complete in `1.2.6`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
 | Publish a full threat model linked from the security documentation. | Complete in `1.2.6`; see [Threat Model](Threat-Model.md) |
-| Add per-agent rate limiting. Approval replay prevention is already shipped. | Complete on main; bounded per-agent token buckets return `429` with retry guidance and emit denied audit records |
+| Add per-agent rate limiting. Approval replay prevention is already shipped. | Complete in `1.2.7`; bounded per-agent token buckets return `429` with retry guidance and emit denied audit records |
 | Add an administrator-only MCP settings surface linked from Forgejo, backed by validated non-secret configuration with effective-value readback, audit history, controlled reload, and rollback. | Remaining; the installer must not expose secrets or grant Forgejo permission to rewrite arbitrary service environment files |
 
 ## Carefully Scoped Capability Work

@@ -1,6 +1,6 @@
 # Threat Model
 
-This page summarizes the maintained threat model for release `1.2.6`. The complete source-controlled model is in `docs/threat-model.md`.
+This page summarizes the maintained threat model for release `1.2.7`. The complete source-controlled model is in `docs/threat-model.md`.
 
 ## Objective And Boundaries
 
