@@ -278,7 +278,7 @@ After execution, `result.pull_request` always contains a normalized PR object wi
 
 ## Phase 3 Generated API Coverage
 
-`forgejo_api_coverage` returns metadata from the pinned Forgejo `15.0.3+gitea-1.22.0` Swagger document in `vendor/forgejo-api`.
+`forgejo_api_coverage` returns metadata from the pinned Forgejo `16.0.0` Swagger document in `vendor/forgejo-api`.
 
 The response includes:
 

@@ -12,8 +12,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC_PATH = ROOT / "vendor" / "forgejo-api" / "forgejo-15.0.3-gitea-1.22.0-swagger.v1.json"
+SPEC_PATH = ROOT / "vendor" / "forgejo-api" / "forgejo-16.0.0-swagger.v1.json"
 REPORT_PATH = ROOT / "docs" / "generated" / "forgejo-api-coverage.md"
+REVIEW_PATH = ROOT / "docs" / "generated" / "forgejo-api-coverage-review-16.0.0.md"
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head"}
 
 
@@ -138,6 +139,7 @@ def main() -> None:
         f"- Source version: `{spec.get('info', {}).get('version', 'unknown')}`",
         f"- Pinned spec: `{SPEC_PATH.relative_to(ROOT).as_posix()}`",
         f"- SHA-256: `{sha256}`",
+        f"- Refresh review: `{REVIEW_PATH.relative_to(ROOT).as_posix()}`",
         f"- Total operations: `{len(rows)}`",
         f"- Semantic overlay operations: `{len(semantic)}`",
         f"- Disabled metadata-only operations: `{len(rows) - len(semantic)}`",

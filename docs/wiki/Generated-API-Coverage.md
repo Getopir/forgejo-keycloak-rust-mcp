@@ -1,20 +1,21 @@
 # Generated API Coverage
 
-Version `1.2.1` pins the live Forgejo API metadata and classifies it before
+Version `1.2.7` pins the Forgejo API metadata and classifies it before
 any generated endpoint can become an MCP tool.
 
 ## Pinned Source
 
-- Forgejo version: `15.0.3+gitea-1.22.0`
-- Pinned file: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`
-- SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`
+- Forgejo version: `16.0.0`
+- Pinned file: `vendor/forgejo-api/forgejo-16.0.0-swagger.v1.json`
+- SHA-256: `a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84`
 - Coverage report: `docs/generated/forgejo-api-coverage.md`
+- Refresh review: `docs/generated/forgejo-api-coverage-review-16.0.0.md`
 
 ## Current Coverage
 
-- Total operations: 491
-- Semantic-overlay operations: 15
-- Disabled metadata-only operations: 476
+- Total operations: 506
+- Semantic-overlay operations: 18
+- Disabled metadata-only operations: 488
 
 The semantic overlay connects reviewed Forgejo endpoints to named MCP
 operations such as `list_repository_metadata`, `list_repository_issues`,

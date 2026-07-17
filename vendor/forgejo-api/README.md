@@ -5,13 +5,14 @@ endpoint classification and coverage reporting.
 
 ## Current Pin
 
-- Source instance: `http://192.168.87.91:3000`
-- Version endpoint: `http://192.168.87.91:3000/api/v1/version`
-- Version response: `15.0.3+gitea-1.22.0`
-- OpenAPI source URL: `http://192.168.87.91:3000/swagger.v1.json`
-- Pinned file: `forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`
-- SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`
-- Retrieved: `2026-06-25`
+- Source tag: `https://codeberg.org/forgejo/forgejo/src/tag/v16.0.0`
+- Source commit: `07ba27a02b8db81be78e336f8597a355c04adb18`
+- OpenAPI template: `templates/swagger/v1_json.tmpl`
+- Rendered version: `16.0.0`
+- Rendered base path: `/api/v1`
+- Pinned file: `forgejo-16.0.0-swagger.v1.json`
+- SHA-256: `a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84`
+- Retrieved: `2026-07-17`
 
 Forgejo documents the Swagger UI at `/api/swagger` and the OpenAPI document at
 `/swagger.v1.json`.
@@ -20,8 +21,9 @@ Forgejo documents the Swagger UI at `/api/swagger` and the OpenAPI document at
 
 When refreshing this pin:
 
-1. Read `/api/v1/version` from the target Forgejo instance.
-2. Download `/swagger.v1.json`.
+1. Resolve and record the intended Forgejo release tag and commit.
+2. Render the release's `templates/swagger/v1_json.tmpl` with the release
+   version and an empty application sub-URL.
 3. Update this file with the version, source URL, retrieval date, byte-for-byte
    filename, and SHA-256.
 4. Run `python tools/generate_forgejo_api_catalog.py`.

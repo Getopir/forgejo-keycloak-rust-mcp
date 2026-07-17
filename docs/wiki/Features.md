@@ -61,9 +61,9 @@ Admin and destructive execution remains disabled.
 
 ## Generated API Coverage
 
-The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and
-classifies all 491 operations. The current semantic overlay covers 18 reviewed
-endpoints. The other 473 endpoints are metadata-only and disabled.
+The gateway pins the Forgejo `16.0.0` Swagger document and classifies all 506
+operations. The current semantic overlay covers 18 reviewed endpoints. The
+other 488 endpoints are metadata-only and disabled.
 
 Agents can inspect this safely:
 

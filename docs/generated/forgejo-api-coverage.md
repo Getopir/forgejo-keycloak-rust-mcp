@@ -2,15 +2,16 @@
 
 Generated from the pinned Forgejo Swagger document.
 
-- Source version: `15.0.3+gitea-1.22.0`
-- Pinned spec: `vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json`
-- SHA-256: `a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f`
-- Total operations: `491`
+- Source version: `16.0.0`
+- Pinned spec: `vendor/forgejo-api/forgejo-16.0.0-swagger.v1.json`
+- SHA-256: `a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84`
+- Refresh review: `docs/generated/forgejo-api-coverage-review-16.0.0.md`
+- Total operations: `506`
 - Semantic overlay operations: `18`
-- Disabled metadata-only operations: `473`
-- Approval-required operations: `275`
-- Destructive operations: `72`
-- Admin operations: `48`
+- Disabled metadata-only operations: `488`
+- Approval-required operations: `282`
+- Destructive operations: `74`
+- Admin operations: `51`
 
 ## Policy
 
@@ -23,29 +24,29 @@ scope, risk class, output limit, and approval policy.
 
 | Risk | Count |
 | --- | ---: |
-| `destructive` | 72 |
+| `destructive` | 74 |
 | `network_egress` | 5 |
-| `read_private` | 209 |
+| `read_private` | 217 |
 | `secret` | 38 |
-| `site_admin` | 48 |
+| `site_admin` | 51 |
 | `write_additive` | 7 |
-| `write_mutating` | 112 |
+| `write_mutating` | 114 |
 
 ## Target Counts
 
 | Target | Count |
 | --- | ---: |
 | `activity_pub` | 11 |
-| `admin` | 48 |
+| `admin` | 51 |
 | `issue` | 58 |
 | `notification` | 7 |
 | `organization` | 56 |
 | `pull_request` | 26 |
 | `release` | 13 |
-| `repository` | 166 |
+| `repository` | 176 |
 | `settings` | 5 |
-| `unknown` | 27 |
-| `user` | 74 |
+| `unknown` | 28 |
+| `user` | 75 |
 
 ## Semantic Overlay
 

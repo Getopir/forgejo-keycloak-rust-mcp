@@ -4,6 +4,15 @@
 
 Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL enforcement.
 
+> **Canonical repository and contribution notice**
+>
+> This project is maintained on
+> [Codeberg](https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp). The
+> [GitHub repository](https://github.com/Getopir/forgejo-keycloak-rust-mcp) is
+> a read-only mirror and may temporarily lag behind Codeberg. GitHub issues,
+> pull requests, reviews, discussions, and other contributions are not
+> monitored or accepted. Submit all issues and contributions on Codeberg.
+
 Version `1.2.7` means:
 
 - `1`: first stable public release line.
@@ -25,7 +34,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Shipped: single-use approval-backed pull-request creation, pull-request merges, and release creation with dry-run preview.
 - Shipped: bounded per-agent token-bucket rate limiting with `429` retry guidance and denied audit records.
 - Shipped: unauthenticated capability discovery for agents and operators.
-- Shipped: generated Forgejo API classification coverage pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
+- Shipped: generated Forgejo API classification coverage pinned to the Forgejo `16.0.0` Swagger document.
 - Remaining: standalone PR update, standalone reviewer-request, branch status, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
 
 ## Current Scope
@@ -68,8 +77,8 @@ This project does not copy or translate GPL implementation code from other Forge
 - Exposes `GET /capabilities` for operation names, scopes, risk classes, approval requirements, and planned-but-disabled PR workflow operations.
 - Provides dry-run merge previews that do not mutate Forgejo.
 - Provides dry-run release previews that do not mutate Forgejo.
-- Pins the live Forgejo `15.0.3+gitea-1.22.0` Swagger document under `vendor/forgejo-api`.
-- Classifies all 491 pinned Forgejo API operations by target type, risk, approval requirement, and exposure.
+- Pins the Forgejo `16.0.0` Swagger document under `vendor/forgejo-api` and records the reviewed endpoint delta.
+- Classifies all 506 pinned Forgejo API operations by target type, risk, approval requirement, and exposure.
 - Exposes `forgejo_api_coverage` as a bounded metadata-only MCP operation.
 - Adds `forgejo-mcpctl api-coverage` for operator and agent readback.
 - Keeps every non-reviewed generated endpoint disabled until a semantic overlay is reviewed.

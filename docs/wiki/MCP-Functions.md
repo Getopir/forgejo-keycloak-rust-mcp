@@ -55,7 +55,7 @@ Phase 2 baseline tools:
 
 Phase 3 generated coverage tool:
 
-- `forgejo_api_coverage`: bounded metadata from the pinned Forgejo `15.0.3+gitea-1.22.0` Swagger document. It classifies all 491 operations by target type, risk, approval requirement, and exposure. It does not execute arbitrary Forgejo endpoints.
+- `forgejo_api_coverage`: bounded metadata from the pinned Forgejo `16.0.0` Swagger document. It classifies all 506 operations by target type, risk, approval requirement, and exposure. It does not execute arbitrary Forgejo endpoints.
 
 Capability discovery:
 

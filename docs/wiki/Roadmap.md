@@ -16,7 +16,7 @@ phase prose.
 - Exact-payload, single-use approval gates for reviewed high-risk operations:
   issue creation, PR creation and merge, release creation, PR review
   submission, and wiki publication.
-- Pinned Forgejo API classification: all 491 upstream operations are assessed;
+- Pinned Forgejo API classification: all 506 upstream operations are assessed;
   only 18 reviewed semantic-overlay operations are executable.
 
 ## Intentional boundaries

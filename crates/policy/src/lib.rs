@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 const FORGEJO_API_SPEC_JSON: &str =
-    include_str!("../vendor/forgejo-api/forgejo-15.0.3-gitea-1.22.0-swagger.v1.json");
+    include_str!("../vendor/forgejo-api/forgejo-16.0.0-swagger.v1.json");
 const FORGEJO_API_SPEC_SHA256: &str =
-    "a90f2fe1266a7a08dfcf682cd28db96c364e18a7de2a4e559a26afe3485bb26f";
+    "a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -669,8 +669,8 @@ mod tests {
     #[test]
     fn pinned_forgejo_api_catalog_classifies_every_operation() {
         let catalog = ForgejoApiCatalog::current().unwrap();
-        assert_eq!(catalog.source_version, "15.0.3+gitea-1.22.0");
-        assert_eq!(catalog.endpoint_count, 491);
+        assert_eq!(catalog.source_version, "16.0.0");
+        assert_eq!(catalog.endpoint_count, 506);
         assert_eq!(catalog.endpoints.len(), catalog.endpoint_count);
         assert!(
             catalog
@@ -678,6 +678,53 @@ mod tests {
                 .iter()
                 .all(|endpoint| !endpoint.path.is_empty())
         );
+    }
+
+    #[test]
+    fn forgejo_16_refresh_endpoints_remain_disabled() {
+        let catalog = ForgejoApiCatalog::current().unwrap();
+        let added = [
+            ("GET", "/actions/run"),
+            ("GET", "/admin/users/{username}/tokens"),
+            ("POST", "/admin/users/{username}/tokens"),
+            ("DELETE", "/admin/users/{username}/tokens/{token}"),
+            ("GET", "/repos/{owner}/{repo}/actions/artifacts"),
+            (
+                "DELETE",
+                "/repos/{owner}/{repo}/actions/artifacts/{artifact_id}",
+            ),
+            (
+                "GET",
+                "/repos/{owner}/{repo}/actions/artifacts/{artifact_id}",
+            ),
+            (
+                "GET",
+                "/repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip",
+            ),
+            ("GET", "/repos/{owner}/{repo}/actions/jobs/{job_id}/logs"),
+            ("DELETE", "/repos/{owner}/{repo}/actions/runs/{run_id}"),
+            (
+                "GET",
+                "/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+            ),
+            ("POST", "/repos/{owner}/{repo}/actions/runs/{run_id}/cancel"),
+            ("GET", "/repos/{owner}/{repo}/actions/runs/{run_id}/jobs"),
+            ("GET", "/repos/{owner}/{repo}/actions/runs/{run_id}/logs"),
+            ("POST", "/user/activitypub/follow"),
+        ];
+
+        let mut approval_required = 0;
+        for (method, path) in added {
+            let endpoint = catalog
+                .endpoints
+                .iter()
+                .find(|endpoint| endpoint.method == method && endpoint.path == path)
+                .unwrap_or_else(|| panic!("missing reviewed Forgejo 16 endpoint: {method} {path}"));
+            assert_eq!(endpoint.exposure, EndpointExposure::Disabled);
+            assert!(endpoint.semantic_operation.is_none());
+            approval_required += usize::from(endpoint.approval_required);
+        }
+        assert_eq!(approval_required, 7);
     }
 
     #[test]

@@ -63,9 +63,9 @@ High-risk operations use file-backed, single-use approval records:
 
 ## Generated API Coverage
 
-The gateway pins the Forgejo `15.0.3+gitea-1.22.0` Swagger document and classifies all 491 operations by target type, risk, approval requirement, and exposure.
+The gateway pins the Forgejo `16.0.0` Swagger document and classifies all 506 operations by target type, risk, approval requirement, and exposure. The 15 operations added since the `15.0.3` pin remain disabled metadata until separately reviewed for MCP exposure.
 
-Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. The current semantic overlay covers 18 reviewed endpoints and leaves 473 metadata-only endpoints disabled.
+Generated coverage is metadata-only unless an endpoint has a reviewed semantic MCP operation. The current semantic overlay covers 18 reviewed endpoints and leaves 488 metadata-only endpoints disabled.
 
 ## CLI
 

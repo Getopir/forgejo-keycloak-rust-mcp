@@ -31,7 +31,7 @@ no commitment to enable every Forgejo API endpoint.
 
 | Improvement | Status |
 | --- | --- |
-| Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Remaining |
+| Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Complete; 506 operations classified, with all 15 additions kept disabled pending separate semantic review |
 | Add a bounded `get_branch_status` read operation. | Remaining |
 | Add a bounded `get_required_checks` read operation. | Remaining |
 | Add a bounded `get_pr_checks` read operation. | Remaining |
