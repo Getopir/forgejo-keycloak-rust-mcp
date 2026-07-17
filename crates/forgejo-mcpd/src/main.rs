@@ -52,6 +52,18 @@ struct Args {
     principal_map: Option<PathBuf>,
     #[arg(long, env = "FORGEJO_MCPD_FORGEJO_URL")]
     forgejo_url: Option<String>,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_FORGEJO_CONNECT_TIMEOUT_SECONDS",
+        default_value_t = ForgejoClient::default_connect_timeout_seconds()
+    )]
+    forgejo_connect_timeout_seconds: u64,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_FORGEJO_REQUEST_TIMEOUT_SECONDS",
+        default_value_t = ForgejoClient::default_request_timeout_seconds()
+    )]
+    forgejo_request_timeout_seconds: u64,
     #[arg(long, alias = "ssl", env = "FORGEJO_MCPD_TLS", default_value_t = false)]
     tls: bool,
     #[arg(
@@ -218,6 +230,10 @@ async fn main() -> anyhow::Result<()> {
         args.agent_rate_limit_window_seconds,
         args.agent_rate_limit_max_agents,
     )?;
+    validate_forgejo_timeout_config(
+        args.forgejo_connect_timeout_seconds,
+        args.forgejo_request_timeout_seconds,
+    )?;
     let discovery_url = args.discovery_url.clone().unwrap_or_else(|| {
         format!(
             "{}/.well-known/openid-configuration",
@@ -234,7 +250,18 @@ async fn main() -> anyhow::Result<()> {
         .transpose()
         .context("failed to load principal map")?
         .map(Arc::new);
-    let forgejo = args.forgejo_url.as_ref().map(ForgejoClient::new);
+    let forgejo = args
+        .forgejo_url
+        .as_ref()
+        .map(|url| {
+            ForgejoClient::with_timeouts(
+                url,
+                Duration::from_secs(args.forgejo_connect_timeout_seconds),
+                Duration::from_secs(args.forgejo_request_timeout_seconds),
+            )
+        })
+        .transpose()
+        .context("failed to configure Forgejo HTTP client")?;
     let state = AppState {
         validator: Arc::new(validator),
         registry: OperationRegistry::current(),
@@ -313,6 +340,21 @@ fn validate_rate_limit_config(
     ensure!(
         max_agents > 0,
         "--agent-rate-limit-max-agents must be positive"
+    );
+    Ok(())
+}
+
+fn validate_forgejo_timeout_config(
+    connect_timeout_seconds: u64,
+    request_timeout_seconds: u64,
+) -> anyhow::Result<()> {
+    ensure!(
+        connect_timeout_seconds > 0,
+        "--forgejo-connect-timeout-seconds must be positive"
+    );
+    ensure!(
+        request_timeout_seconds > 0,
+        "--forgejo-request-timeout-seconds must be positive"
     );
     Ok(())
 }
@@ -2579,7 +2621,7 @@ fn error_response(status: StatusCode, request_id: Uuid, error: &str) -> axum::re
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_rate_limit_config, validate_tls_urls};
+    use super::{validate_forgejo_timeout_config, validate_rate_limit_config, validate_tls_urls};
 
     #[test]
     fn tls_flag_requires_https_resource() {
@@ -2614,5 +2656,12 @@ mod tests {
         assert!(validate_rate_limit_config(0, 60, 10_000).is_err());
         assert!(validate_rate_limit_config(60, 0, 10_000).is_err());
         assert!(validate_rate_limit_config(60, 60, 0).is_err());
+    }
+
+    #[test]
+    fn forgejo_timeout_configuration_requires_positive_bounds() {
+        assert!(validate_forgejo_timeout_config(5, 30).is_ok());
+        assert!(validate_forgejo_timeout_config(0, 30).is_err());
+        assert!(validate_forgejo_timeout_config(5, 0).is_err());
     }
 }

@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
@@ -17,7 +18,9 @@ const DEFAULT_APPROVAL_TTL_SECONDS: u64 = 900;
 #[derive(Debug, Clone)]
 pub struct ApprovalStore {
     path: PathBuf,
+    lock_path: PathBuf,
     ttl_seconds: u64,
+    consume_lock: Arc<Mutex<()>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -110,9 +113,13 @@ struct BodyFingerprint<'a> {
 
 impl ApprovalStore {
     pub fn new(path: PathBuf, ttl_seconds: u64) -> Self {
+        let mut lock_path = path.as_os_str().to_os_string();
+        lock_path.push(".lock");
         Self {
             path,
+            lock_path: PathBuf::from(lock_path),
             ttl_seconds: ttl_seconds.max(1),
+            consume_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -176,6 +183,11 @@ impl ApprovalStore {
         principal: &Principal,
         mapping: &PrincipalMapping,
     ) -> Result<ApprovalValidation, ApprovalError> {
+        let _process_guard = self
+            .consume_lock
+            .lock()
+            .map_err(|_| ApprovalError::Io("approval consume lock is poisoned".to_string()))?;
+        let _file_guard = self.lock_consumption()?;
         let mut record = self.validated_record(request, principal, mapping)?;
         record.status = ApprovalStatus::Consumed;
         record.consumed_by_issuer = Some(principal.issuer.clone());
@@ -188,6 +200,22 @@ impl ApprovalStore {
             approval_id: record.approval_id,
             expires_at_epoch: record.expires_at_epoch,
         })
+    }
+
+    fn lock_consumption(&self) -> Result<File, ApprovalError> {
+        if let Some(parent) = self.lock_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|err| ApprovalError::Io(err.to_string()))?;
+        }
+        let file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(&self.lock_path)
+            .map_err(|err| ApprovalError::Io(err.to_string()))?;
+        file.lock()
+            .map_err(|err| ApprovalError::Io(err.to_string()))?;
+        Ok(file)
     }
 
     fn validated_record(
@@ -298,6 +326,7 @@ mod tests {
     use super::*;
     use crate::principal::{PrincipalKind, PrincipalMapping};
     use std::collections::BTreeSet;
+    use std::sync::{Arc, Barrier};
 
     fn request(operation: &str) -> McpProbeRequest {
         McpProbeRequest {
@@ -407,5 +436,43 @@ mod tests {
             store.validate(&request, &principal("executor"), &mapping("executor-user")),
             Err(ApprovalError::AlreadyConsumed)
         ));
+    }
+
+    #[test]
+    fn concurrent_consumers_allow_exactly_one_execution() {
+        let path = std::env::temp_dir().join(format!("approval-{}.jsonl", Uuid::now_v7()));
+        let first_store = ApprovalStore::new(path.clone(), 60);
+        let second_store = ApprovalStore::new(path, 60);
+        let approved_request = request("merge_pull_request");
+        let grant = first_store
+            .create(
+                "merge_pull_request",
+                &approved_request,
+                &principal("approver"),
+                &mapping("approver-user"),
+            )
+            .unwrap();
+        let barrier = Arc::new(Barrier::new(2));
+        let run_consumer = |store: ApprovalStore, barrier: Arc<Barrier>| {
+            let approval_id = grant.approval_id.to_string();
+            std::thread::spawn(move || {
+                let mut request = request("merge_pull_request");
+                request.approval_id = Some(approval_id);
+                barrier.wait();
+                store.consume(&request, &principal("executor"), &mapping("executor-user"))
+            })
+        };
+        let first = run_consumer(first_store, Arc::clone(&barrier));
+        let second = run_consumer(second_store, barrier);
+        let results = [first.join().unwrap(), second.join().unwrap()];
+
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(result, Err(ApprovalError::AlreadyConsumed)))
+                .count(),
+            1
+        );
     }
 }

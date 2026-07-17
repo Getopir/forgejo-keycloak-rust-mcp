@@ -14,7 +14,7 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 > pull requests, reviews, discussions, and other contributions are not
 > monitored or accepted. Submit all issues and contributions on Codeberg.
 
-Version `1.3.0` means:
+Version `1.3.1` means:
 
 - `1`: first stable public release line.
 - `3`: public assurance and OpenSSF badge feature series.
@@ -40,7 +40,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.3.0` publishes the verified OpenSSF Best Practices Passing badge without expanding the gateway's executable Forgejo capability surface. The stable release line includes:
+`1.3.1` adds atomic single-use approval consumption and bounded outbound Forgejo request timeouts without expanding the gateway's executable Forgejo capability surface. The stable release line includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -136,6 +136,8 @@ export FORGEJO_MCPD_AUDIENCE=forgejo-mcp
 export FORGEJO_MCPD_RESOURCE=https://mcp.example.org/mcp
 export FORGEJO_MCPD_TLS=true
 export FORGEJO_MCPD_FORGEJO_URL=https://forgejo.example.org
+export FORGEJO_MCPD_FORGEJO_CONNECT_TIMEOUT_SECONDS=5
+export FORGEJO_MCPD_FORGEJO_REQUEST_TIMEOUT_SECONDS=30
 export FORGEJO_MCPD_BIND=127.0.0.1:7080
 export FORGEJO_MCPD_APPROVAL_STORE=/var/lib/forgejo-mcpd/approvals.jsonl
 forgejo-keycloak-rust-mcpd
@@ -185,7 +187,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 1.3.0](docs/release-notes/1.3.0.md)
+- [Release Notes 1.3.1](docs/release-notes/1.3.1.md)
 - [Release Notes 1.2.11](docs/release-notes/1.2.11.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)

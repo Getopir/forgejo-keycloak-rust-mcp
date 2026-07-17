@@ -154,10 +154,7 @@ impl JwtValidator {
         let header = decode_header(token).map_err(|e| IdentityError::Jwt(e.to_string()))?;
         let kid = header.kid.ok_or(IdentityError::MissingKid)?;
         let jwk = self.jwks.find(&kid).ok_or(IdentityError::UnknownKid)?;
-        let key_algorithm = validate_signing_jwk(jwk)?;
-        if header.alg != key_algorithm {
-            return Err(IdentityError::JwtAlgorithmMismatch);
-        }
+        let key_algorithm = validation_algorithm(jwk, header.alg)?;
         let key = DecodingKey::from_jwk(jwk).map_err(|e| IdentityError::Jwt(e.to_string()))?;
 
         let mut validation = Validation::new(key_algorithm);
@@ -278,6 +275,14 @@ fn validate_signing_jwk(jwk: &Jwk) -> Result<Algorithm, IdentityError> {
     }
 }
 
+fn validation_algorithm(jwk: &Jwk, token_algorithm: Algorithm) -> Result<Algorithm, IdentityError> {
+    let key_algorithm = validate_signing_jwk(jwk)?;
+    if token_algorithm != key_algorithm {
+        return Err(IdentityError::JwtAlgorithmMismatch);
+    }
+    Ok(key_algorithm)
+}
+
 fn validate_rsa_modulus(
     encoded_modulus: &str,
     algorithm: Algorithm,
@@ -372,6 +377,20 @@ mod tests {
         let mut undeclared = rsa_jwks("RS256", 2048);
         undeclared.keys[0].common.key_algorithm = None;
         assert!(validate_jwks(&undeclared).is_err());
+    }
+
+    #[test]
+    fn rejects_token_algorithm_that_differs_from_the_signing_jwk() {
+        let jwks = rsa_jwks("RS256", 2048);
+
+        assert!(matches!(
+            validation_algorithm(&jwks.keys[0], Algorithm::RS384),
+            Err(IdentityError::JwtAlgorithmMismatch)
+        ));
+        assert_eq!(
+            validation_algorithm(&jwks.keys[0], Algorithm::RS256).unwrap(),
+            Algorithm::RS256
+        );
     }
 
     #[test]

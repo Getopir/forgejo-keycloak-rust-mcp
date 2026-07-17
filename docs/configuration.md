@@ -11,6 +11,8 @@
 | `--bind` | `FORGEJO_MCPD_BIND` | No | Socket address to listen on. Defaults to `127.0.0.1:7080`. |
 | `--principal-map` | `FORGEJO_MCPD_PRINCIPAL_MAP` | No | Path to the Phase 1 Keycloak-to-Forgejo mapping JSON file. Required for Forgejo-backed tools. |
 | `--forgejo-url` | `FORGEJO_MCPD_FORGEJO_URL` | No | Base URL for the Forgejo instance. Required for Forgejo-backed tools. |
+| `--forgejo-connect-timeout-seconds` | `FORGEJO_MCPD_FORGEJO_CONNECT_TIMEOUT_SECONDS` | No | Maximum time to establish a Forgejo connection. Defaults to `5`; must be positive. |
+| `--forgejo-request-timeout-seconds` | `FORGEJO_MCPD_FORGEJO_REQUEST_TIMEOUT_SECONDS` | No | Total timeout for each Forgejo HTTP request. Defaults to `30`; must be positive. |
 | `--tls`, `--ssl` | `FORGEJO_MCPD_TLS` | No | Require configured public MCP and Forgejo URLs to use `https://`. |
 | `--trusted-user-header` | `FORGEJO_MCPD_TRUSTED_USER_HEADER` | No | Trusted reverse-proxy username header generated from the mapped Forgejo login. Defaults to `X-WEBAUTH-USER`. |
 | `--trusted-email-header` | `FORGEJO_MCPD_TRUSTED_EMAIL_HEADER` | No | Optional trusted reverse-proxy email header generated from the mapping. |
@@ -92,6 +94,10 @@ export FORGEJO_AGENT_READER_TOKEN=...
 ```
 
 Unknown or disabled mappings are denied before any Forgejo call.
+
+## Forgejo HTTP Timeouts
+
+Every outbound Forgejo request has a five-second connect timeout and a 30-second total request timeout by default. Set `FORGEJO_MCPD_FORGEJO_CONNECT_TIMEOUT_SECONDS` and `FORGEJO_MCPD_FORGEJO_REQUEST_TIMEOUT_SECONDS` to positive integer seconds when the deployment needs different bounds. A timed-out request fails without waiting indefinitely; operators must still confirm the Forgejo-side state before retrying a timed-out mutation.
 
 ## Per-Agent Rate Limiting
 

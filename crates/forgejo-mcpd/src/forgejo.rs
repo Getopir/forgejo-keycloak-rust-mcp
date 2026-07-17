@@ -2,6 +2,10 @@
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
 pub struct ForgejoClient {
@@ -615,11 +619,28 @@ pub enum ForgejoError {
 }
 
 impl ForgejoClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self {
+    pub fn with_timeouts(
+        base_url: impl Into<String>,
+        connect_timeout: Duration,
+        request_timeout: Duration,
+    ) -> Result<Self, ForgejoError> {
+        let http = reqwest::Client::builder()
+            .connect_timeout(connect_timeout)
+            .timeout(request_timeout)
+            .build()
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        Ok(Self {
             base_url: base_url.into().trim_end_matches('/').to_string(),
-            http: reqwest::Client::new(),
-        }
+            http,
+        })
+    }
+
+    pub const fn default_connect_timeout_seconds() -> u64 {
+        DEFAULT_CONNECT_TIMEOUT.as_secs()
+    }
+
+    pub const fn default_request_timeout_seconds() -> u64 {
+        DEFAULT_REQUEST_TIMEOUT.as_secs()
     }
 
     pub async fn repository_metadata(
@@ -2491,6 +2512,35 @@ impl IssueCommentSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn request_timeout_bounds_a_stalled_forgejo_response() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (release_server, server_release) = std::sync::mpsc::channel();
+        let stalled_server = std::thread::spawn(move || {
+            let (_stream, _) = listener.accept().unwrap();
+            let _ = server_release.recv_timeout(Duration::from_secs(2));
+        });
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_millis(50),
+        )
+        .unwrap();
+        let target = RepositoryTarget::parse("rawholding/example").unwrap();
+        let started = std::time::Instant::now();
+
+        let error = client
+            .repository_metadata("token", &target)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, ForgejoError::Request(_)));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        release_server.send(()).unwrap();
+        stalled_server.join().unwrap();
+    }
 
     #[test]
     fn successful_empty_optional_json_is_absent_instead_of_a_decode_failure() {
