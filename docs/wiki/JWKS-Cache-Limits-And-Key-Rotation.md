@@ -10,10 +10,16 @@ The gateway fetches OIDC discovery and JWKS data once at startup and holds that 
 - A token with an unknown `kid` is unauthorized until the gateway restarts with that key present.
 - A removed key remains accepted by an already-running gateway until restart.
 
+Startup also rejects symmetric JWT signing keys, missing algorithms or key IDs,
+duplicate signing key IDs, algorithm/key-type mismatches, RSA signing keys below
+2048 bits, and unsupported curves. Allowed combinations are RS256/384/512 or
+PS256/384/512 with RSA, ES256 with P-256, ES384 with P-384, and EdDSA with
+Ed25519. Encryption-only JWKS entries are ignored for token validation.
+
 ## Rotation
 
 1. Publish the new public key in Keycloak JWKS before signing tokens with it.
-2. Verify the new `kid` from the gateway network.
+2. Verify the new `kid` and its algorithm, key size, and curve from the gateway network.
 3. Restart every gateway instance and test a token signed with the new key.
 4. Switch Keycloak signing to the new key.
 5. Keep the old public key published for the maximum access-token lifetime plus clock skew and propagation time.

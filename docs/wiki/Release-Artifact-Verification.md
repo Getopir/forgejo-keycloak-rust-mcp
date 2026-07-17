@@ -15,7 +15,7 @@ ssh-keygen -Y verify \
   -s SHA256SUMS.sig < SHA256SUMS
 ```
 
-Expected `1.2.9` signer fingerprint:
+Expected `1.2.10` signer fingerprint:
 
 ```text
 SHA256:MtI1AAdPMX0v3uRCxqyS+yissU/8gHkmZ2sYPpPLHm8
