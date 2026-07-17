@@ -1,9 +1,12 @@
 # Features
 
-The current `1.x` line is the compatibility line for Forgejo versions before
-`16.0.0`. The planned `2.x` line targets Forgejo `16.0.0` only and enables one
-reviewed semantic operation per minor release. See the
+The completed `1.x` line is the compatibility line for Forgejo versions before
+`16.0.0`. The current `2.x` line targets Forgejo `16.0.0` only and enables one
+reviewed semantic operation per later minor release. See the
 [Forgejo 16 Release Plan](forgejo-16-release-plan.md).
+
+When a Forgejo URL is configured, `2.0.0` verifies `/api/v1/version` before
+listening and exposes the required and verified versions in `/health`.
 
 ## Identity And Policy
 

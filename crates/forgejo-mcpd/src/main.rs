@@ -11,8 +11,8 @@ use axum::{Router, serve};
 use clap::Parser;
 use forgejo::{
     CreateIssueOptions, CreatePullRequestOptions, CreateReleaseOptions, ForgejoClient,
-    ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest, RepositoryMetadata,
-    RepositoryTarget, WikiPageOptions,
+    ForgejoError, MergePullRequestOptions, NumberedTarget, PageRequest, REQUIRED_FORGEJO_VERSION,
+    RepositoryMetadata, RepositoryTarget, WikiPageOptions,
 };
 use identity::JwtValidator;
 use policy::OperationRegistry;
@@ -118,6 +118,7 @@ struct AppState {
     resource: String,
     principal_mapper: Option<Arc<PrincipalMapper>>,
     forgejo: Option<ForgejoClient>,
+    forgejo_server_version: Option<String>,
     trusted_headers: TrustedHeaderConfig,
     max_page_limit: u32,
     max_diff_bytes: usize,
@@ -129,6 +130,8 @@ struct AppState {
 struct Health {
     service: &'static str,
     status: &'static str,
+    required_forgejo_version: &'static str,
+    verified_forgejo_version: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -250,18 +253,26 @@ async fn main() -> anyhow::Result<()> {
         .transpose()
         .context("failed to load principal map")?
         .map(Arc::new);
-    let forgejo = args
-        .forgejo_url
-        .as_ref()
-        .map(|url| {
-            ForgejoClient::with_timeouts(
-                url,
-                Duration::from_secs(args.forgejo_connect_timeout_seconds),
-                Duration::from_secs(args.forgejo_request_timeout_seconds),
-            )
-        })
-        .transpose()
+    let (forgejo, forgejo_server_version) = if let Some(url) = args.forgejo_url.as_ref() {
+        let client = ForgejoClient::with_timeouts(
+            url,
+            Duration::from_secs(args.forgejo_connect_timeout_seconds),
+            Duration::from_secs(args.forgejo_request_timeout_seconds),
+        )
         .context("failed to configure Forgejo HTTP client")?;
+        let version = client
+            .verify_server_version()
+            .await
+            .with_context(|| format!("Forgejo compatibility check failed for {url}"))?;
+        info!(
+            forgejo_version = %version,
+            required_forgejo_version = REQUIRED_FORGEJO_VERSION,
+            "verified Forgejo server compatibility"
+        );
+        (Some(client), Some(version))
+    } else {
+        (None, None)
+    };
     let state = AppState {
         validator: Arc::new(validator),
         registry: OperationRegistry::current(),
@@ -269,6 +280,7 @@ async fn main() -> anyhow::Result<()> {
         resource: args.resource,
         principal_mapper,
         forgejo,
+        forgejo_server_version,
         trusted_headers: TrustedHeaderConfig::new(
             args.trusted_user_header,
             args.trusted_email_header,
@@ -366,10 +378,12 @@ fn has_https_scheme(value: &str) -> bool {
         .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"))
 }
 
-async fn health() -> Json<Health> {
+async fn health(State(state): State<AppState>) -> Json<Health> {
     Json(Health {
         service: "forgejo-mcpd",
         status: "ok",
+        required_forgejo_version: REQUIRED_FORGEJO_VERSION,
+        verified_forgejo_version: state.forgejo_server_version,
     })
 }
 

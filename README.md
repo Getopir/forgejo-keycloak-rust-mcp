@@ -21,9 +21,10 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 | `1.x` through `1.3.1` | Forgejo versions before `16.0.0` |
 | `2.x` starting with `2.0.0` | Forgejo `16.0.0` only |
 
-The repository already pins Forgejo 16 metadata for review, but that does not
-make the `1.x` runtime a Forgejo 16 compatibility promise. Version `2.0.0` will
-establish and verify that boundary before new Forgejo 16 operations ship.
+Version `2.0.0` verifies the configured Forgejo server through
+`/api/v1/version` before listening. It requires an exact `16.0.0` semantic core
+version and accepts Forgejo build metadata such as
+`16.0.0+gitea-1.22.0`.
 
 Each new semantic operation receives one `2.x.0` minor release. Compatible
 repairs increment the patch component, such as `2.2.1`. See the
@@ -49,7 +50,9 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.3.1` adds atomic single-use approval consumption and bounded outbound Forgejo request timeouts without expanding the gateway's executable Forgejo capability surface. The stable release line includes:
+`2.0.0` establishes the Forgejo 16-only compatibility baseline without
+expanding the gateway's executable Forgejo capability surface. The stable
+release line includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -92,6 +95,9 @@ This project does not copy or translate GPL implementation code from other Forge
 - Exposes `forgejo_api_coverage` as a bounded metadata-only MCP operation.
 - Adds `forgejo-mcpctl api-coverage` for operator and agent readback.
 - Keeps every non-reviewed generated endpoint disabled until a semantic overlay is reviewed.
+- Fails startup before binding when a configured Forgejo server is unavailable
+  or does not report the required `16.0.0` core version.
+- Reports the required and verified Forgejo versions from `GET /health`.
 
 High-risk Forgejo mutations such as deletion and admin actions remain disabled. Pull-request creation, pull-request merge, release creation, and wiki publication are the reviewed approval-backed high-risk execution paths.
 
@@ -197,7 +203,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 1.3.1](docs/release-notes/1.3.1.md)
+- [Release Notes 2.0.0](docs/release-notes/2.0.0.md)
 - [Release Notes 1.2.11](docs/release-notes/1.2.11.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)

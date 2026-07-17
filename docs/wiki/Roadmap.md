@@ -1,13 +1,13 @@
 # Project Status
 
 The original Phase 0–3 roadmap is complete as a product-baseline plan. The
-gateway is on the stable `1.3.1` line; current capability and security posture
+gateway is on the stable `2.0.0` line; current capability and security posture
 are documented in the pages linked below rather than repeated as historical
 phase prose.
 
-The `1.x` line is the pre-Forgejo-16 compatibility line. The planned `2.x`
+The `1.x` line is the pre-Forgejo-16 compatibility line. The current `2.x`
 line targets Forgejo `16.0.0` only, beginning with the compatibility baseline
-in `2.0.0` and then one reviewed semantic operation per minor release. See the
+in `2.0.0` and then one reviewed semantic operation per later minor release. See the
 [Forgejo 16 Release Plan](Forgejo-16-Release-Plan.md).
 
 ## Shipped

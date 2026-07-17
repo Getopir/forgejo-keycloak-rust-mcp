@@ -1,5 +1,9 @@
 # MCP Functions
 
+Release `2.0.0` targets Forgejo `16.0.0` only. When a Forgejo URL is configured,
+the daemon verifies `/api/v1/version` before listening. `GET /health` reports
+both `required_forgejo_version` and `verified_forgejo_version`.
+
 The current release exposes:
 
 - `GET /health`
@@ -72,7 +76,7 @@ Resource summaries include stable `forgejo://...` resource URIs. Examples:
 - `forgejo://notification/123`
 - `forgejo://wiki-page/GetOpir/forgejo-keycloak-rust-mcp/Home`
 
-High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `1.3.1` release supports bounded per-agent admission control, pull-request diff inspection, evidence-backed review submission, additive issue creation, atomic approval consumption for approval-backed mutations, pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, bounded outbound Forgejo requests, safe credential-reference status, generated API classification coverage, capability discovery, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
+High-risk mutations such as repository deletion and admin actions require approval and remain disabled. The stable `2.0.0` release supports bounded per-agent admission control, pull-request diff inspection, evidence-backed review submission, additive issue creation, atomic approval consumption for approval-backed mutations, pull-request creation with normalized readback, pull-request merge with status-context reporting, stale no-diff PR closure, release creation, approval-backed wiki publication, bounded outbound Forgejo requests, safe credential-reference status, generated API classification coverage, capability discovery, Forgejo 16 startup verification, and HTTPS setup guards while keeping non-reviewed generated endpoints disabled.
 
 `create_approval` creates a short-lived record for one exact approval-gated operation payload. The gateway binds that record to the requested operation, target, state, SHA-256 body hash, and approving principal. Execution requires a different mapped principal, consumes the approval before the Forgejo call, and denies replay. `create_pull_request`, `merge_pull_request`, `create_release`, `create_wiki_page`, and `update_wiki_page` also support dry-run preview with no Forgejo mutation.
 

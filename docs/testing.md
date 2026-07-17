@@ -51,6 +51,13 @@ curl -sS http://127.0.0.1:7080/.well-known/oauth-protected-resource
 curl -sS http://127.0.0.1:7080/capabilities
 ```
 
+For a configured `2.x` deployment, `/health` must report required version
+`16.0.0` and the verified Forgejo version. Startup must fail before listening
+when `/api/v1/version` reports an older, newer, prerelease, malformed, or
+unreachable contract. Unit tests also assert that all existing semantic
+operations remain mapped to the pinned Forgejo 16 document while all 15 new
+upstream endpoints remain disabled.
+
 Unauthenticated `/mcp` requests should return `401`:
 
 ```sh

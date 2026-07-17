@@ -2,6 +2,11 @@
 
 Run the complete workspace test suite with `cargo test --workspace`.
 
+The `2.0.0` contract tests accept Forgejo `16.0.0` with optional build metadata,
+reject incompatible or malformed versions, verify the public version endpoint,
+map every existing semantic operation to the pinned Forgejo 16 document, and
+keep all 15 newly added Forgejo endpoints disabled.
+
 Both internal Forgejo and public Codeberg CI also run strict Clippy and enforce
 domain-code coverage with `cargo-llvm-cov` `0.8.7`. The `1.2.11` baseline is:
 

@@ -785,4 +785,35 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn forgejo_16_contract_covers_every_existing_semantic_operation() {
+        let catalog = ForgejoApiCatalog::current().unwrap();
+        let actual = catalog
+            .endpoints
+            .iter()
+            .filter_map(|endpoint| endpoint.semantic_operation.as_deref())
+            .collect::<BTreeSet<_>>();
+        let expected = BTreeSet::from([
+            "create_issue",
+            "create_issue_comment",
+            "create_pull_request",
+            "create_release",
+            "create_wiki_page",
+            "get_pull_request_diff",
+            "get_wiki_page",
+            "list_notifications",
+            "list_pull_request_reviews",
+            "list_pull_requests",
+            "list_releases",
+            "list_repository_issues",
+            "list_repository_metadata",
+            "list_wiki_pages",
+            "merge_pull_request",
+            "submit_pull_request_review",
+            "update_wiki_page",
+        ]);
+
+        assert_eq!(actual, expected);
+    }
 }

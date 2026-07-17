@@ -59,6 +59,24 @@ forgejo-keycloak-rust-mcpd \
 
 Keep Forgejo token values in runtime environment variables named by the principal map. Do not store token values in the map or in source control.
 
+## Upgrade And Rollback
+
+Before upgrading from `1.3.1`, upgrade Forgejo to `16.0.0` and verify its
+`/api/v1/version` response. Back up the gateway binary, service configuration,
+approval store, and audit log, install `2.0.0`, restart, and confirm `/health`
+reports the required and verified Forgejo versions. Then verify capabilities,
+an expected denial, and an authorized read.
+
+There is no state or configuration migration. To roll back, restore the
+`1.3.1` executable or run:
+
+```sh
+cargo install forgejo-keycloak-rust-mcp --version 1.3.1 --locked --force
+```
+
+Restart and repeat the health, capability, denial, and authorized-read checks.
+Rolling back the gateway does not roll back Forgejo.
+
 CLI wrapper:
 
 ```sh

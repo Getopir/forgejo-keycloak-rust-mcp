@@ -26,6 +26,19 @@
 | `--agent-rate-limit-window-seconds` | `FORGEJO_MCPD_AGENT_RATE_LIMIT_WINDOW_SECONDS` | No | Time in seconds for a full per-agent bucket refill. Defaults to `60`. |
 | `--agent-rate-limit-max-agents` | `FORGEJO_MCPD_AGENT_RATE_LIMIT_MAX_AGENTS` | No | Maximum agent identities tracked in memory. Defaults to `10000`; new identities fail closed when the bound is full. |
 
+## Forgejo 16 Compatibility Check
+
+The `2.x` line supports Forgejo `16.0.0` only. When `--forgejo-url` is set, the
+daemon requests `<forgejo-url>/api/v1/version` before opening its listener. The
+reported semantic core version must be exactly `16.0.0`; build metadata such as
+`16.0.0+gitea-1.22.0` is accepted.
+
+An older, newer, prerelease, malformed, unreachable, or non-successful response
+fails startup. This check uses the configured Forgejo connect and request
+timeouts and does not send a mapped user token. A deployment without
+`--forgejo-url` can expose policy and metadata endpoints, but Forgejo-backed
+operations remain unavailable and `/health` reports a null verified version.
+
 ## Keycloak Setup
 
 Use operator-reachable, agent-reachable URLs for both `FORGEJO_MCPD_ISSUER` and `FORGEJO_MCPD_RESOURCE`. A container-only issuer such as `http://keycloak:8080/realms/master` is valid only when every caller and the gateway can resolve that hostname the same way. Prefer one canonical LAN DNS name or HTTPS URL shared by:

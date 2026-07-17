@@ -3,8 +3,8 @@
 The `1.x` line supports the pre-Forgejo-16 contract and ends at `1.3.1`. The
 `2.x` line targets Forgejo `16.0.0` only.
 
-Version `2.0.0` establishes and verifies the Forgejo 16-only baseline. Each new
-semantic operation is then delivered alone as a minor release beginning with
+Version `2.0.0` established and verified the Forgejo 16-only baseline. Each new
+semantic operation is delivered alone as a minor release beginning with
 `2.1.0`. Compatible repairs use patch releases such as `2.2.1`. Work stops after
 each release until source, tag, notes, artifacts, wikis, crates.io, deployment,
 and readback agree.

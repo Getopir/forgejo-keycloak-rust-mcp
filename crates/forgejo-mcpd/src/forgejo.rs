@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use reqwest::StatusCode;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+pub const REQUIRED_FORGEJO_VERSION: &str = "16.0.0";
 
 #[derive(Debug, Clone)]
 pub struct ForgejoClient {
@@ -100,6 +102,11 @@ pub struct RepositoryMetadata {
 #[derive(Debug, Clone, Deserialize)]
 struct ForgejoUser {
     login: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForgejoServerVersion {
+    version: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -616,6 +623,15 @@ pub enum ForgejoError {
     Api { status: StatusCode, body: String },
     #[error("Forgejo request failed: {0}")]
     Request(String),
+    #[error("Forgejo returned an invalid server version {reported:?}: {reason}")]
+    InvalidServerVersion { reported: String, reason: String },
+    #[error(
+        "unsupported Forgejo server version {reported}; version 2.x requires Forgejo {required}"
+    )]
+    UnsupportedServerVersion {
+        required: &'static str,
+        reported: String,
+    },
 }
 
 impl ForgejoClient {
@@ -641,6 +657,28 @@ impl ForgejoClient {
 
     pub const fn default_request_timeout_seconds() -> u64 {
         DEFAULT_REQUEST_TIMEOUT.as_secs()
+    }
+
+    pub async fn verify_server_version(&self) -> Result<String, ForgejoError> {
+        let url = format!("{}/api/v1/version", self.base_url);
+        let response = self
+            .http
+            .get(url)
+            .send()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ForgejoError::Api { status, body });
+        }
+        let reported = response
+            .json::<ForgejoServerVersion>()
+            .await
+            .map_err(|err| ForgejoError::Request(err.to_string()))?
+            .version;
+        validate_server_version(&reported)?;
+        Ok(reported)
     }
 
     pub async fn repository_metadata(
@@ -1935,6 +1973,25 @@ fn default_merge_method() -> String {
     "merge".to_string()
 }
 
+fn validate_server_version(reported: &str) -> Result<(), ForgejoError> {
+    let parsed = Version::parse(reported).map_err(|err| ForgejoError::InvalidServerVersion {
+        reported: reported.to_string(),
+        reason: err.to_string(),
+    })?;
+    let required = Version::parse(REQUIRED_FORGEJO_VERSION).expect("required version is valid");
+    if parsed.major != required.major
+        || parsed.minor != required.minor
+        || parsed.patch != required.patch
+        || !parsed.pre.is_empty()
+    {
+        return Err(ForgejoError::UnsupportedServerVersion {
+            required: REQUIRED_FORGEJO_VERSION,
+            reported: reported.to_string(),
+        });
+    }
+    Ok(())
+}
+
 impl RepositoryTarget {
     pub fn parse(value: &str) -> Result<Self, ForgejoError> {
         if let Some(target) = value.strip_prefix("forgejo://repository/") {
@@ -2512,6 +2569,93 @@ impl IssueCommentSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{BufRead, BufReader, Write};
+
+    fn spawn_version_server(
+        status: &str,
+        body: &str,
+    ) -> (std::net::SocketAddr, std::thread::JoinHandle<String>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let status = status.to_string();
+        let body = body.to_string();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request_line = String::new();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            reader.read_line(&mut request_line).unwrap();
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if line == "\r\n" || line.is_empty() {
+                    break;
+                }
+            }
+            write!(
+                stream,
+                "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            )
+            .unwrap();
+            request_line
+        });
+        (address, server)
+    }
+
+    #[test]
+    fn forgejo_16_version_contract_accepts_build_metadata_only() {
+        assert!(validate_server_version("16.0.0").is_ok());
+        assert!(validate_server_version("16.0.0+gitea-1.22.0").is_ok());
+        for unsupported in ["15.0.3", "16.0.1", "16.1.0", "17.0.0", "16.0.0-rc.1"] {
+            assert!(matches!(
+                validate_server_version(unsupported),
+                Err(ForgejoError::UnsupportedServerVersion { .. })
+            ));
+        }
+        assert!(matches!(
+            validate_server_version("Forgejo 16.0.0"),
+            Err(ForgejoError::InvalidServerVersion { .. })
+        ));
+    }
+
+    #[tokio::test]
+    async fn compatibility_probe_uses_public_forgejo_version_endpoint() {
+        let (address, server) =
+            spawn_version_server("200 OK", r#"{"version":"16.0.0+gitea-1.22.0"}"#);
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+
+        let version = client.verify_server_version().await.unwrap();
+
+        assert_eq!(version, "16.0.0+gitea-1.22.0");
+        assert_eq!(server.join().unwrap(), "GET /api/v1/version HTTP/1.1\r\n");
+    }
+
+    #[tokio::test]
+    async fn compatibility_probe_rejects_an_older_forgejo_server() {
+        let (address, server) = spawn_version_server("200 OK", r#"{"version":"15.0.3"}"#);
+        let client = ForgejoClient::with_timeouts(
+            format!("http://{address}"),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+
+        let error = client.verify_server_version().await.unwrap_err();
+
+        assert!(matches!(
+            error,
+            ForgejoError::UnsupportedServerVersion {
+                required: "16.0.0",
+                reported
+            } if reported == "15.0.3"
+        ));
+        server.join().unwrap();
+    }
 
     #[tokio::test]
     async fn request_timeout_bounds_a_stalled_forgejo_response() {

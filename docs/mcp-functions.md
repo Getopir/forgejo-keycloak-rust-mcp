@@ -1,6 +1,6 @@
 # MCP Functions
 
-`1.3.1` exposes a hardened, curated MCP endpoint. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, enforces bounded per-agent admission control, executes bounded read operations, reads bounded pull-request diffs, submits evidence-backed pull-request reviews, supports additive issue creation and issue or pull-request comments, creates pull requests after atomic single-use approval consumption with normalized readback, publishes wiki pages after approval, returns stable resource URIs, supports approval-backed pull-request merge and release creation, bounds outbound Forgejo HTTP requests, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and includes HTTPS setup guards for public Forgejo and MCP URLs.
+`2.0.0` exposes a hardened, curated MCP endpoint for Forgejo `16.0.0`. It validates authentication, evaluates policy for registered operation names, maps Keycloak principals to Forgejo accounts when configured, enforces bounded per-agent admission control, executes bounded read operations, reads bounded pull-request diffs, submits evidence-backed pull-request reviews, supports additive issue creation and issue or pull-request comments, creates pull requests after atomic single-use approval consumption with normalized readback, publishes wiki pages after approval, returns stable resource URIs, supports approval-backed pull-request merge and release creation, bounds outbound Forgejo HTTP requests, detects and closes no-diff stale PRs, exposes capability metadata, returns safe credential-reference status without secret values, returns bounded generated Forgejo API coverage metadata, and verifies the configured Forgejo version before listening.
 
 `submit_pull_request_review` records an evidence-backed `APPROVED` or
 `REQUEST_CHANGES` review as the mapped reviewer identity. It requires
@@ -14,8 +14,11 @@ returns a bounded review summary for authoritative readback.
 Returns service health:
 
 ```json
-{"service":"forgejo-mcpd","status":"ok"}
+{"service":"forgejo-mcpd","status":"ok","required_forgejo_version":"16.0.0","verified_forgejo_version":"16.0.0+gitea-1.22.0"}
 ```
+
+`verified_forgejo_version` is `null` only when the daemon runs without a
+configured Forgejo URL, in which case Forgejo-backed tools are unavailable.
 
 ### `GET /.well-known/oauth-protected-resource`
 

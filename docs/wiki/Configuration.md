@@ -20,6 +20,18 @@ Configure the daemon with these values:
 
 Use environment variables or a deployment secret file outside the repository. Never commit tokens, client secrets, or private keys.
 
+## Forgejo 16 Compatibility
+
+Release `2.x` supports Forgejo `16.0.0` only. When the Forgejo base URL is
+configured, startup requests `/api/v1/version` without a user token and requires
+an exact `16.0.0` semantic core version. Build metadata such as
+`16.0.0+gitea-1.22.0` is accepted. Older, newer, prerelease, malformed,
+unreachable, or unsuccessful responses fail before the daemon listens.
+
+`GET /health` reports the required and verified version. A null verified
+version means no Forgejo URL was configured and Forgejo-backed tools are not
+available.
+
 Use canonical URLs that operators, agents, OPIR-P, Keycloak, and the gateway can all resolve consistently. A container-only issuer such as `http://keycloak:8080/realms/master` is suitable only when every caller runs in the same DNS context. Prefer a stable LAN DNS name or HTTPS URL and reuse it in Keycloak issuer metadata, MCP protected-resource metadata, OPIR-P work-order inputs, and agent setup docs.
 
 When Forgejo or the MCP public route is served over HTTPS, set the public MCP resource URL and Forgejo base URL to `https://` and enable the HTTPS guard. The guard validates URL configuration; TLS termination still belongs in the reverse proxy or TLS layer in front of the local daemon bind.

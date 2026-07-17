@@ -103,6 +103,34 @@ WantedBy=multi-user.target
 
 Keep `/etc/forgejo-mcpd/forgejo-mcpd.env` out of source control.
 
+## Upgrade From 1.3.1
+
+1. Upgrade the Forgejo server to `16.0.0` and confirm
+   `GET /api/v1/version` reports `16.0.0` with optional build metadata.
+2. Back up the gateway executable, service unit, non-secret configuration,
+   approval store, and audit log according to their retention policies.
+3. Install `forgejo-keycloak-rust-mcp` `2.0.0` and restart the service.
+4. Confirm `/health` reports `required_forgejo_version` as `16.0.0` and a
+   non-null matching `verified_forgejo_version`.
+5. Verify capability metadata, one expected denial, and one authorized
+   read-only Forgejo operation before enabling normal traffic.
+
+There is no configuration or state-file migration. The breaking change is the
+Forgejo server compatibility boundary.
+
+## Roll Back To 1.3.1
+
+Stop the service, restore the backed-up `1.3.1` executable, and restart it with
+the unchanged configuration and state files. For a crates.io installation:
+
+```sh
+cargo install forgejo-keycloak-rust-mcp --version 1.3.1 --locked --force
+```
+
+Confirm health, capability metadata, an expected denial, and an authorized
+read before restoring normal traffic. Rolling back the gateway does not roll
+back Forgejo and does not require approval-store or audit-log conversion.
+
 ## CLI Wrapper
 
 `forgejo-mcpctl` is optional. It reads the gateway URL from `FORGEJO_MCPCTL_GATEWAY` and reads the bearer token from the environment variable named by `FORGEJO_MCPCTL_TOKEN_ENV`.

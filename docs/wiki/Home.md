@@ -34,8 +34,8 @@ The canonical wiki source lives in `docs/wiki` in the repository. Hosted Forgejo
 
 ## Release
 
-Current public release: `1.3.1`.
+Current public release: `2.0.0`.
 
-The `1.x` line is the pre-Forgejo-16 compatibility line. The planned `2.x` line
+The `1.x` line is the pre-Forgejo-16 compatibility line. The current `2.x` line
 targets Forgejo `16.0.0` only and advances one reviewed semantic operation per
-minor release.
+later minor release.

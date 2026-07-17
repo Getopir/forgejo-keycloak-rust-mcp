@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.3.1`, not a restatement of the
+This is the short, current backlog after `2.0.0`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -48,7 +48,7 @@ release.
 
 | Improvement | Status |
 | --- | --- |
-| Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Complete; 506 operations classified, with all 15 additions kept disabled pending separate semantic review |
+| Refresh the pinned Forgejo OpenAPI document from `15.0.3` to `16.0.0` and regenerate the reviewed coverage catalog. | Complete in `2.0.0`; 506 operations classified, all 17 existing semantic operations contract-tested, and all 15 additions kept disabled pending separate semantic review |
 | Add a bounded `get_branch_status` read operation. | Remaining |
 | Add a bounded `get_required_checks` read operation. | Remaining |
 | Add a bounded `get_pr_checks` read operation. | Remaining |

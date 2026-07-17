@@ -1,5 +1,11 @@
 # Forgejo 16.0.0 API Coverage Review
 
+Regenerated for the `2.0.0` compatibility baseline from the unchanged pinned
+document with SHA-256
+`a41f976f1d616e273c0a1855a625928e59e758f324f0b02fc247a25a5469be84`.
+Contract tests verify that all 17 existing named semantic operations map to the
+18 reviewed endpoint overlays below. No disabled endpoint became executable.
+
 This review compares the pinned Forgejo `16.0.0` Swagger document with the
 previous `15.0.3+gitea-1.22.0` pin.
 
