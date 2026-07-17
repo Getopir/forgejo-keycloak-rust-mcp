@@ -22,6 +22,7 @@ no commitment to enable every Forgejo API endpoint.
 | Document credential-rotation and incident-response procedures. | Complete in `1.2.2`; see [Credential Rotation And Incident Response](Credential-Rotation-And-Incident-Response.md) |
 | Add pull-request secret scanning in CI. | Complete in `1.2.6`; checksum-verified Gitleaks scans full Git history before Rust CI checks |
 | Document JWKS cache limits and key-rotation behaviour. | Complete in `1.2.6`; see [JWKS Cache Limits And Key Rotation](JWKS-Cache-Limits-And-Key-Rotation.md) |
+| Enforce minimum JWT signing-key strength. | Remaining; add an explicit JWT algorithm allowlist, reject RSA keys below 2048 bits, validate supported EC curves, and fail startup when a loaded Keycloak JWK does not meet these requirements before claiming the OpenSSF `crypto_keylength` criterion |
 | Export structured audit records to a durable sink. | Complete in `1.2.6`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
 | Publish a full threat model linked from the security documentation. | Complete in `1.2.6`; see [Threat Model](Threat-Model.md) |
 | Add per-agent rate limiting. Approval replay prevention is already shipped. | Complete in `1.2.7`; bounded per-agent token buckets return `429` with retry guidance and emit denied audit records |
