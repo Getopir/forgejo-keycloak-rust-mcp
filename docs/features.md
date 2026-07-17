@@ -19,6 +19,10 @@
 - Reads mapped Forgejo API tokens from runtime environment variables only.
 - Builds trusted reverse-proxy headers from the server-side mapping when deployments use Forgejo trusted-header auth.
 
+## Per-Agent Admission Control
+
+Enabled mapped agents use bounded in-memory token buckets keyed by normalized Keycloak `(issuer, subject)`. Capacity, refill window, and tracked-agent bounds are configurable; exhausted buckets return HTTP `429` with `Retry-After` and produce a denied audit record. Proxy-level limits remain required for aggregate and non-agent traffic.
+
 ## Curated MCP Tools
 
 - `gateway_probe`

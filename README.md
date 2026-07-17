@@ -23,6 +23,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Shipped: curated bounded Forgejo tools, typed resource URIs, and CLI wrappers for common agent/operator calls.
 - Shipped: file-backed approval gates with exact payload and principal binding.
 - Shipped: single-use approval-backed pull-request creation, pull-request merges, and release creation with dry-run preview.
+- Shipped on main: bounded per-agent token-bucket rate limiting with `429` retry guidance and denied audit records.
 - Shipped: unauthenticated capability discovery for agents and operators.
 - Shipped: generated Forgejo API classification coverage pinned to the Forgejo `15.0.3+gitea-1.22.0` Swagger document.
 - Remaining: standalone PR update, standalone reviewer-request, branch status, required-check, PR-check, generic generated endpoint execution, admin execution, destructive execution, release deletion, release replacement, and release asset upload remain intentionally disabled.
@@ -59,6 +60,7 @@ This project does not copy or translate GPL implementation code from other Forge
 - Adds short-lived, file-backed approval records for high-risk operation gates.
 - Rejects forged, expired, mismatched, or wrong-principal approval IDs.
 - Consumes approval records before execution so they cannot be replayed.
+- Applies bounded in-memory token buckets to enabled mapped agents keyed by immutable Keycloak issuer and subject.
 - Requires approver and executor to be different mapped principals.
 - Executes `merge_pull_request` only after a valid approval and Forgejo ACL check.
 - Executes `create_release` only after a valid approval and Forgejo ACL check.

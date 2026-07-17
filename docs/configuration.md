@@ -20,6 +20,9 @@
 | `--approval-store` | `FORGEJO_MCPD_APPROVAL_STORE` | No | Path to an append-only JSONL file for short-lived approval records. Required to validate approval IDs for high-risk gates. |
 | `--audit-log` | `FORGEJO_MCPD_AUDIT_LOG` | No | Path to an append-only JSONL file that receives structured audit events. |
 | `--approval-ttl-seconds` | `FORGEJO_MCPD_APPROVAL_TTL_SECONDS` | No | Approval lifetime in seconds. Defaults to `900`. |
+| `--agent-rate-limit-requests` | `FORGEJO_MCPD_AGENT_RATE_LIMIT_REQUESTS` | No | Token-bucket capacity for each enabled mapped agent. Defaults to `60`. |
+| `--agent-rate-limit-window-seconds` | `FORGEJO_MCPD_AGENT_RATE_LIMIT_WINDOW_SECONDS` | No | Time in seconds for a full per-agent bucket refill. Defaults to `60`. |
+| `--agent-rate-limit-max-agents` | `FORGEJO_MCPD_AGENT_RATE_LIMIT_MAX_AGENTS` | No | Maximum agent identities tracked in memory. Defaults to `10000`; new identities fail closed when the bound is full. |
 
 ## Keycloak Setup
 
@@ -89,6 +92,14 @@ export FORGEJO_AGENT_READER_TOKEN=...
 ```
 
 Unknown or disabled mappings are denied before any Forgejo call.
+
+## Per-Agent Rate Limiting
+
+Requests from enabled mappings whose `principal_type` is `agent` pass through an in-memory token bucket keyed by normalized Keycloak `(issuer, subject)`. The default allows a burst of 60 requests and refills that capacity over 60 seconds. An exhausted bucket returns HTTP `429 Too Many Requests`, a `Retry-After` header, and `retry_after_seconds` in the JSON response. The denial is included in structured audit output.
+
+Set all three rate-limit values to positive integers. The daemon rejects zero-valued bounds at startup. Tracking is capped by `FORGEJO_MCPD_AGENT_RATE_LIMIT_MAX_AGENTS`; idle buckets are removed when capacity is needed, and the limiter fails closed for a new agent if no idle entry can be removed.
+
+This limiter is local to one daemon process and resets on restart. It does not limit unauthenticated traffic, mapped humans, aggregate traffic across agents, request-body size, concurrent requests, or traffic distributed across multiple gateway instances. Keep reverse-proxy request, body, connection, timeout, and aggregate rate limits in place.
 
 ## Agent Token Acquisition
 

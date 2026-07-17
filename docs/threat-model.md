@@ -1,7 +1,7 @@
 # Threat Model
 
 Status: maintained for release `1.2.6`  
-Last reviewed: 2026-07-16
+Last reviewed: 2026-07-17
 
 ## Scope And Security Objective
 
@@ -55,13 +55,13 @@ TLS termination, host isolation, Keycloak administration, Forgejo administration
 | Approval forgery or replay | Exact-payload binding, expiry, approver/executor separation, and consume-before-execute single use | A service account with write access to the approval file can tamper with local state. Restrict file permissions and isolate the service account. |
 | Destructive or instance-admin action | Destructive, generic generated, and instance-admin execution paths are intentionally disabled | Future capability additions can expand impact. Each must have a named semantic overlay, bounded schema, scope, audit behavior, and approval policy. |
 | Credential disclosure | Forgejo tokens are read from named environment variables; mapping and audit schemas exclude token values; responses omit downstream credentials; secret scanning runs in CI | A compromised process or host can read environment secrets. Use a dedicated service account, restrict diagnostics and core dumps, and rotate exposed credentials. |
-| Sensitive-data over-read or resource exhaustion | Typed responses, page caps, bounded diff size, and reviewed endpoint-specific parsing | The gateway has no per-agent rate limiter, and JWKS size has no application-level cap. Apply reverse-proxy limits and monitor memory, request rate, and response volume. |
+| Sensitive-data over-read or resource exhaustion | Typed responses, page caps, bounded diff size, reviewed endpoint-specific parsing, and bounded token buckets for mapped agents | JWKS size has no application-level cap. Rate-limit state is process-local and excludes non-agent traffic. Apply reverse-proxy limits and monitor memory, request rate, and response volume. |
 | Stale or malicious signing-key state | Discovery and JWKS are fetched over the configured transport; tokens must match a loaded key | JWKS is a startup-only snapshot with no TTL, refresh-on-`kid`, or size cap. Follow the documented overlap-and-restart rotation procedure and protect OIDC transport. |
 | Network interception or endpoint redirection | Optional `--tls` guard rejects HTTP public resource and Forgejo URLs | The daemon does not terminate TLS. A misconfigured reverse proxy, CA store, DNS, or unprotected local network can expose tokens. Use authenticated TLS and restrict the local bind. |
 | Request-target injection or SSRF | Forgejo base URL is operator configuration; repository and numbered targets are parsed into typed path components; callers cannot select arbitrary upstream hosts | Compromised configuration can redirect Forgejo credentials. Protect service configuration and validate the configured origin during deployment. |
 | Audit suppression, tampering, or disk exhaustion | Token-safe structured schema; append-only JSONL mode; each configured write is flushed and synchronized; startup fails if the sink cannot open | Runtime sink failures are logged but do not fail requests. Local privileged users can alter files and unbounded retention can fill storage. Export off-host, alert on write errors, rotate, and protect retention. |
 | Dependency, CI, or release compromise | Locked Rust dependencies, RustSec audit, `cargo-deny`, checksum-verified Gitleaks, CycloneDX SBOMs, signed release checksum manifests, and review-required dependency updates | CI actions, tool downloads, registries, and maintainer signing hosts remain trusted dependencies. Pin and review updates, protect release credentials, and verify published artifacts. |
-| Denial of service | Bounded list and diff outputs; malformed requests fail before Forgejo calls | No built-in rate limiting or admission queue exists. Enforce request/body/rate/time limits at the reverse proxy and monitor Keycloak and Forgejo dependencies. |
+| Denial of service | Bounded list and diff outputs; malformed requests fail before Forgejo calls; mapped agents receive per-identity token buckets with bounded tracking and `429` retry guidance | No global admission queue or distributed limiter exists, and buckets reset on restart. Enforce unauthenticated, body, concurrency, aggregate-rate, and timeout limits at the reverse proxy and monitor Keycloak and Forgejo dependencies. |
 
 ## Security Assumptions
 

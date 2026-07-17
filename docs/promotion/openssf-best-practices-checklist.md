@@ -1,6 +1,8 @@
 # OpenSSF Best Practices Badge Checklist
 
-OpenSSF Best Practices Badge site: `https://www.bestpractices.dev/en`
+OpenSSF program page: `https://openssf.org/projects/best-practices-badge/`
+
+OpenSSF Best Practices Badge service: `https://www.bestpractices.dev/en`
 
 Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 
@@ -12,21 +14,19 @@ Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 | License | Ready | `LICENSE` and `LICENSES/AGPL-3.0-or-later.txt`. |
 | Basic build instructions | Ready | `README.md`, `docs/install.md`. |
 | Test instructions | Ready | `docs/testing.md`. |
-| Security checks | Started | `docs/security-checks.md`, `deny.toml`, `.forgejo/workflows/ci.yml`; rerun local fmt/check/test before publishing `1.1.2`. |
-| Security reporting process | Started | `SECURITY.md`. |
-| Contribution process | Started | `CONTRIBUTING.md`. |
+| Security checks | Ready | `docs/security-checks.md`, `deny.toml`, `.forgejo/workflows/ci.yml`, Gitleaks, RustSec, dependency policy, and SBOM checks. |
+| Security reporting process | Ready | `SECURITY.md`, incident-response runbook, and maintained threat model. |
+| Contribution process | Ready | `CONTRIBUTING.md`, including test, license, security, and AI-assisted contribution rules. |
 | Roadmap | Ready | `docs/wiki/Roadmap.md`. |
-| Release notes | Ready | `docs/release-notes/1.1.2.md`. |
+| Release notes | Ready | Hosted releases and `docs/release-notes/`. |
+| Automation proposal | Ready | Root `.bestpractices.json` contains evidence-backed proposed answers for maintainer review. |
 
 ## Gaps To Close
 
-- Create the OpenSSF project entry and complete the web checklist.
-- Attach a Codeberg-compatible CI runner or Woodpecker pipeline so `cargo fmt`, `cargo test`, dependency audit, dependency policy, and SBOM generation run automatically.
-- Public threat model completed in `1.2.6`; see `docs/threat-model.md`.
-- Decide whether to add a dedicated private security contact.
-- Add branch protection and required checks once CI exists.
-- Add release artifact signing or documented source-tag verification.
+- Log in to `bestpractices.dev` as an authorized maintainer, create the entry for the Codeberg repository, choose the baseline series, review the automated `.bestpractices.json` proposals, and save only claims verified by the maintainer.
+- Complete any criteria that depend on hosted settings not visible in the repository, including maintainer MFA and effective default-branch protection.
+- Record the assigned numeric project ID here and add the service-generated badge only after the corresponding badge level is actually earned.
 
 ## Suggested Badge Claim
 
-Do not add an OpenSSF badge to `README.md` until the checklist is created and the project has at least a passing or baseline badge status.
+The public repository currently has no matching OpenSSF entry. Do not add a badge to `README.md` until `https://www.bestpractices.dev/projects.json?url=https%3A%2F%2Fcodeberg.org%2FGetOpir%2Fforgejo-keycloak-rust-mcp` returns the maintainer-created entry and that entry reports an earned badge level. An in-progress or fabricated badge would misrepresent the external self-certification state.

@@ -21,7 +21,7 @@ Protected assets include Keycloak and Forgejo credentials, private repository da
 | Approval forgery or replay | Exact-payload, expiring, different-principal, single-use approvals | Protect the local approval file and service account |
 | Operation escalation | Closed operation registry; unreviewed generated endpoints disabled | Review every new semantic operation and risk class |
 | Credential disclosure | Token references, token-free responses and audits, CI secret scanning | Harden the host and rotate exposed environment secrets |
-| Unbounded reads or denial of service | Page and diff bounds, typed responses | Apply proxy request, body, rate, and timeout limits; no built-in per-agent limiter exists |
+| Unbounded reads or denial of service | Page and diff bounds, typed responses, and bounded per-agent token buckets | Apply proxy limits for unauthenticated, human, aggregate, body, concurrency, timeout, and multi-instance traffic; buckets reset on restart |
 | Stale signing keys | Validated startup JWKS | Follow overlap-and-restart rotation; there is no TTL, automatic refresh, or JWKS size cap |
 | Network interception | HTTPS configuration guard | Terminate authenticated TLS and keep the daemon bind private |
 | Audit loss or tampering | Structured append-only synchronized JSONL export | Export off-host, alert on runtime write failures, rotate, and protect retention |

@@ -4,7 +4,7 @@ use anyhow::{Context, ensure};
 use approval::{ApprovalError, ApprovalStore};
 use audit::{AuditDecision, AuditEvent, JsonlAuditSink, PrincipalType};
 use axum::extract::State;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Json};
 use axum::routing::{get, post};
 use axum::{Router, serve};
@@ -22,6 +22,7 @@ use std::collections::BTreeSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -31,6 +32,9 @@ static AUDIT_SINK: OnceLock<JsonlAuditSink> = OnceLock::new();
 mod approval;
 mod forgejo;
 mod principal;
+mod rate_limit;
+
+use rate_limit::{AgentRateLimiter, RateLimitDecision};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -74,6 +78,24 @@ struct Args {
         default_value_t = ApprovalStore::default_ttl_seconds()
     )]
     approval_ttl_seconds: u64,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_AGENT_RATE_LIMIT_REQUESTS",
+        default_value_t = 60
+    )]
+    agent_rate_limit_requests: u32,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_AGENT_RATE_LIMIT_WINDOW_SECONDS",
+        default_value_t = 60
+    )]
+    agent_rate_limit_window_seconds: u64,
+    #[arg(
+        long,
+        env = "FORGEJO_MCPD_AGENT_RATE_LIMIT_MAX_AGENTS",
+        default_value_t = 10_000
+    )]
+    agent_rate_limit_max_agents: usize,
 }
 
 #[derive(Clone)]
@@ -88,6 +110,7 @@ struct AppState {
     max_page_limit: u32,
     max_diff_bytes: usize,
     approval_store: Option<ApprovalStore>,
+    agent_rate_limiter: AgentRateLimiter,
 }
 
 #[derive(Debug, Serialize)]
@@ -190,6 +213,11 @@ async fn main() -> anyhow::Result<()> {
             .map_err(|_| anyhow::anyhow!("audit log was already configured"))?;
     }
     validate_tls_urls(args.tls, &args.resource, args.forgejo_url.as_deref())?;
+    validate_rate_limit_config(
+        args.agent_rate_limit_requests,
+        args.agent_rate_limit_window_seconds,
+        args.agent_rate_limit_max_agents,
+    )?;
     let discovery_url = args.discovery_url.clone().unwrap_or_else(|| {
         format!(
             "{}/.well-known/openid-configuration",
@@ -224,6 +252,11 @@ async fn main() -> anyhow::Result<()> {
         approval_store: args
             .approval_store
             .map(|path| ApprovalStore::new(path, args.approval_ttl_seconds)),
+        agent_rate_limiter: AgentRateLimiter::new(
+            args.agent_rate_limit_requests,
+            Duration::from_secs(args.agent_rate_limit_window_seconds),
+            args.agent_rate_limit_max_agents,
+        ),
     };
     let app = Router::new()
         .route("/health", get(health))
@@ -264,6 +297,23 @@ fn validate_tls_urls(
             "--tls requires --forgejo-url to use an https:// Forgejo URL"
         );
     }
+    Ok(())
+}
+
+fn validate_rate_limit_config(
+    requests: u32,
+    window_seconds: u64,
+    max_agents: usize,
+) -> anyhow::Result<()> {
+    ensure!(requests > 0, "--agent-rate-limit-requests must be positive");
+    ensure!(
+        window_seconds > 0,
+        "--agent-rate-limit-window-seconds must be positive"
+    );
+    ensure!(
+        max_agents > 0,
+        "--agent-rate-limit-max-agents must be positive"
+    );
     Ok(())
 }
 
@@ -399,6 +449,42 @@ async fn mcp_handler(
         .principal_mapper
         .as_ref()
         .and_then(|mapper| mapper.resolve(&principal).ok().cloned());
+    if mapping
+        .as_ref()
+        .is_some_and(|mapping| matches!(mapping.principal_type, principal::PrincipalKind::Agent))
+        && let RateLimitDecision::Limited {
+            retry_after_seconds,
+        } = state
+            .agent_rate_limiter
+            .check(&principal.issuer, &principal.subject)
+    {
+        warn!(
+            request_id = %request_id,
+            issuer = %principal.issuer,
+            subject = %principal.subject,
+            retry_after_seconds,
+            "agent request rate limited"
+        );
+        audit_decision(
+            request_id,
+            &principal,
+            mapping.as_ref(),
+            &body,
+            &decision,
+            AuditDecision::Deny,
+            None,
+        );
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            [(header::RETRY_AFTER, retry_after_seconds.to_string())],
+            Json(serde_json::json!({
+                "request_id": request_id,
+                "error": "per-agent rate limit exceeded",
+                "retry_after_seconds": retry_after_seconds
+            })),
+        )
+            .into_response();
+    }
     info!(
         request_id = %request_id,
         operation = %body.operation,
@@ -2493,7 +2579,7 @@ fn error_response(status: StatusCode, request_id: Uuid, error: &str) -> axum::re
 
 #[cfg(test)]
 mod tests {
-    use super::validate_tls_urls;
+    use super::{validate_rate_limit_config, validate_tls_urls};
 
     #[test]
     fn tls_flag_requires_https_resource() {
@@ -2520,5 +2606,13 @@ mod tests {
             Some("https://forgejo.example.org"),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn rate_limit_configuration_requires_positive_bounds() {
+        assert!(validate_rate_limit_config(60, 60, 10_000).is_ok());
+        assert!(validate_rate_limit_config(0, 60, 10_000).is_err());
+        assert!(validate_rate_limit_config(60, 0, 10_000).is_err());
+        assert!(validate_rate_limit_config(60, 60, 0).is_err());
     }
 }

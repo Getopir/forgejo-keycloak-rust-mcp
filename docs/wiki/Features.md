@@ -11,6 +11,7 @@
 - Explicit operation registry with required scope, risk class, and approval policy.
 - Token-free audit events.
 - Trusted-header spoof rejection.
+- Bounded per-agent token buckets with `429` retry guidance and denied audit records.
 
 ## Forgejo Principal Mapping
 
