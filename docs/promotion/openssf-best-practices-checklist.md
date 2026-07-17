@@ -23,7 +23,7 @@ Project URL: `https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp`
 
 ## Gaps To Close
 
-- Log in to `bestpractices.dev` as an authorized maintainer, create the entry for the Codeberg repository, choose the baseline series, review the automated `.bestpractices.json` proposals, and save only claims verified by the maintainer.
+- Log in to `bestpractices.dev` as an authorized maintainer, create the entry for the Codeberg repository, choose the metal/passing series, review the automated `.bestpractices.json` proposals, and save only claims verified by the maintainer. The baseline series can be completed separately.
 - Complete any criteria that depend on hosted settings not visible in the repository, including maintainer MFA and effective default-branch protection.
 - Record the assigned numeric project ID here and add the service-generated badge only after the corresponding badge level is actually earned.
 
