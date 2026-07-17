@@ -25,7 +25,7 @@ ssh-keygen -Y verify \
   -s SHA256SUMS.sig < SHA256SUMS
 ```
 
-The expected signer fingerprint for the `1.2.8` release is:
+The expected signer fingerprint for the `1.2.9` release is:
 
 ```text
 SHA256:MtI1AAdPMX0v3uRCxqyS+yissU/8gHkmZ2sYPpPLHm8
@@ -45,7 +45,7 @@ Maintainers generate artifacts from the annotated release tag:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\build-release-artifacts.ps1 `
-  -Version 1.2.8 `
+  -Version 1.2.9 `
   -SigningKey <private-key-path> `
   -OutputDirectory <empty-output-directory>
 ```

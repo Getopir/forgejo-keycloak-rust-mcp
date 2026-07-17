@@ -66,15 +66,17 @@
   "tests_are_added_status": "Met",
   "tests_are_added_justification": "Behavior changes in the maintained source include focused regression tests.",
   "warnings_status": "Met",
-  "warnings_justification": "CI runs cargo check across the workspace and the repository defines workspace lint policy.",
+  "warnings_justification": "CI runs cargo check and strict Clippy across the workspace and all targets.",
   "warnings_fixed_status": "Met",
-  "warnings_fixed_justification": "Pull-request CI must pass the workspace checks before changes are accepted.",
+  "warnings_fixed_justification": "Push and pull-request CI reject every Clippy warning with -D warnings.",
+  "warnings_strict_status": "Met",
+  "warnings_strict_justification": "Both internal Forgejo and public Codeberg CI run cargo clippy --workspace --all-targets -- -D warnings.",
   "no_leaked_credentials_status": "Met",
   "no_leaked_credentials_justification": "Checksum-verified Gitleaks scans full Git history in CI, and SECURITY.md forbids committed credentials.",
   "static_analysis_status": "Met",
-  "static_analysis_justification": "CI runs cargo check, RustSec cargo-audit, cargo-deny, and Gitleaks.",
+  "static_analysis_justification": "CI runs strict Clippy source analysis, RustSec cargo-audit, cargo-deny, and Gitleaks.",
   "static_analysis_fixed_status": "Met",
   "static_analysis_fixed_justification": "The normal change workflow requires the automated security and policy checks to pass.",
   "static_analysis_often_status": "Met",
-  "static_analysis_often_justification": "Static and dependency checks run automatically on pushes and pull requests."
+  "static_analysis_often_justification": "Strict Clippy source analysis runs automatically on every push and pull request."
 }

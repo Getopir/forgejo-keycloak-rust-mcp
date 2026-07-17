@@ -2,7 +2,7 @@
 
 ## Supported Version
 
-`1.2.8` is the current supported public release.
+`1.2.9` is the current supported public release.
 
 ## Reporting
 

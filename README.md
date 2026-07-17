@@ -13,7 +13,7 @@ Clean-room Rust MCP gateway for Forgejo with Keycloak identity and Forgejo ACL e
 > pull requests, reviews, discussions, and other contributions are not
 > monitored or accepted. Submit all issues and contributions on Codeberg.
 
-Version `1.2.8` means:
+Version `1.2.9` means:
 
 - `1`: first stable public release line.
 - `2`: PR/source-authority hygiene feature series.
@@ -39,7 +39,7 @@ This project does not copy or translate GPL implementation code from other Forge
 
 ## Current Scope
 
-`1.2.8` publishes a role-address vulnerability-reporting and private-handling process without expanding the gateway's executable Forgejo capability surface. The `1.2` feature series includes:
+`1.2.9` makes strict Clippy analysis mandatory on every push and pull request without expanding the gateway's executable Forgejo capability surface. The `1.2` feature series includes:
 
 - Validates Keycloak-issued bearer tokens with issuer, audience, expiry, and JWKS checks.
 - Serves OAuth protected-resource metadata for MCP clients.
@@ -184,7 +184,7 @@ curl -sS \
 - [Codeberg Publishing](docs/codeberg-publishing.md)
 - [Crates.io Publishing](docs/crates-io-publishing.md)
 - [Promotion Checklist](docs/promotion/README.md)
-- [Release Notes 1.2.8](docs/release-notes/1.2.8.md)
+- [Release Notes 1.2.9](docs/release-notes/1.2.9.md)
 - [Release Notes 1.2.4](docs/release-notes/1.2.4.md)
 - [Release Notes 1.2.3](docs/release-notes/1.2.3.md)
 - [Release Notes 1.2.2](docs/release-notes/1.2.2.md)

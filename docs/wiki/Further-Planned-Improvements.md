@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.8`, not a restatement of the
+This is the short, current backlog after `1.2.9`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -35,8 +35,8 @@ no commitment to enable every Forgejo API endpoint.
 | Improvement | Status |
 | --- | --- |
 | Demonstrate that automated tests cover most code branches, input fields, and functionality. | Remaining; add reproducible statement and branch coverage measurement to CI, publish the results, define documented thresholds, and close material gaps before claiming the OpenSSF `test_most` criterion |
-| Enforce maximally strict Rust warnings in CI. | Remaining; require `cargo clippy --workspace --all-targets -- -D warnings` as a mandatory CI check before claiming the OpenSSF `warnings_strict` criterion |
-| Run static analysis on every push and pull request. | Remaining; CI installs Clippy but does not execute it, so add `cargo clippy --workspace --all-targets -- -D warnings` to both push and pull-request workflows before claiming the OpenSSF `static_analysis_often` criterion |
+| Enforce maximally strict Rust warnings in CI. | Complete in `1.2.9`; internal Forgejo and public Codeberg CI reject every Clippy warning across the workspace and all targets |
+| Run static analysis on every push and pull request. | Complete in `1.2.9`; both push and pull-request workflows run strict Clippy source analysis |
 
 ## Carefully Scoped Capability Work
 
