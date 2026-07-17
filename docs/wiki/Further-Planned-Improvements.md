@@ -29,6 +29,12 @@ no commitment to enable every Forgejo API endpoint.
 | Document how vulnerability reports sent to `info@getopir.com` remain private. | Remaining; define restricted handling, redacted initial reports, an agreed secure channel for sensitive follow-up, retention expectations, and escalation ownership before claiming the OpenSSF private-reporting criterion |
 | Add an administrator-only MCP settings surface linked from Forgejo, backed by validated non-secret configuration with effective-value readback, audit history, controlled reload, and rollback. | Remaining; the installer must not expose secrets or grant Forgejo permission to rewrite arbitrary service environment files |
 
+## Quality And Assurance
+
+| Improvement | Status |
+| --- | --- |
+| Demonstrate that automated tests cover most code branches, input fields, and functionality. | Remaining; add reproducible statement and branch coverage measurement to CI, publish the results, define documented thresholds, and close material gaps before claiming the OpenSSF `test_most` criterion |
+
 ## Carefully Scoped Capability Work
 
 | Improvement | Status |
