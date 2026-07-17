@@ -1,6 +1,6 @@
 # Remaining Maintainer Backlog
 
-This is the short, current backlog after `1.2.7`, not a restatement of the
+This is the short, current backlog after `1.2.8`, not a restatement of the
 completed phase roadmap. Entries below are deliberate follow-up work; there is
 no commitment to enable every Forgejo API endpoint.
 
@@ -26,8 +26,8 @@ no commitment to enable every Forgejo API endpoint.
 | Export structured audit records to a durable sink. | Complete in `1.2.6`; `FORGEJO_MCPD_AUDIT_LOG` enables append-only, synchronized JSONL export |
 | Publish a full threat model linked from the security documentation. | Complete in `1.2.6`; see [Threat Model](Threat-Model.md) |
 | Add per-agent rate limiting. Approval replay prevention is already shipped. | Complete in `1.2.7`; bounded per-agent token buckets return `429` with retry guidance and emit denied audit records |
-| Publish a monitored vulnerability-reporting process using `info@getopir.com`. | Remaining; update `SECURITY.md` with the exact contact route, required report details, no-public-issue guidance, and a verified acknowledgement commitment before submitting the OpenSSF application |
-| Document how vulnerability reports sent to `info@getopir.com` remain private. | Remaining; define restricted handling, redacted initial reports, an agreed secure channel for sensitive follow-up, retention expectations, and escalation ownership before claiming the OpenSSF private-reporting criterion |
+| Publish a monitored vulnerability-reporting process using `info@getopir.com`. | Complete; `SECURITY.md` publishes the role address, required report details, no-public-issue rule, and seven-day acknowledgement target |
+| Document how vulnerability reports sent to `info@getopir.com` remain private. | Complete; `SECURITY.md` defines restricted access, redacted coordination, encrypted sensitive follow-up, coordinated disclosure, status updates, and retention |
 | Add an administrator-only MCP settings surface linked from Forgejo, backed by validated non-secret configuration with effective-value readback, audit history, controlled reload, and rollback. | Remaining; the installer must not expose secrets or grant Forgejo permission to rewrite arbitrary service environment files |
 
 ## Quality And Assurance

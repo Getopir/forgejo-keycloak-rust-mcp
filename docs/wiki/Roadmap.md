@@ -1,7 +1,7 @@
 # Project Status
 
 The original Phase 0–3 roadmap is complete as a product-baseline plan. The
-gateway is on the stable `1.2.7` line; current capability and security posture
+gateway is on the stable `1.2.8` line; current capability and security posture
 are documented in the pages linked below rather than repeated as historical
 phase prose.
 

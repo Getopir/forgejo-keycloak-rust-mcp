@@ -48,7 +48,7 @@
   "report_archive_status": "Met",
   "report_archive_justification": "Public issues remain archived in the Codeberg tracker.",
   "vulnerability_report_process_status": "Met",
-  "vulnerability_report_process_justification": "SECURITY.md documents private vulnerability reporting and handling: https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/src/branch/main/SECURITY.md",
+  "vulnerability_report_process_justification": "SECURITY.md directs reports to the monitored info@getopir.com role address, prohibits public disclosure, commits to acknowledgement within seven calendar days, and documents restricted handling: https://codeberg.org/GetOpir/forgejo-keycloak-rust-mcp/src/branch/main/SECURITY.md",
   "build_status": "Met",
   "build_justification": "Cargo.lock and the Cargo workspace provide a documented, repeatable build invocation.",
   "build_common_tools_status": "Met",
